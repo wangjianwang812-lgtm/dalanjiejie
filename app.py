@@ -11,10 +11,8 @@ st.markdown("""
     .block-container { padding-top: 1rem !important; }
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
-    .stApp { background-color: #87CEEB !important; }
     
-    /* 强视觉：黑底红字预览区 */
+    /* 核心：黑底红字预览框，确保文字清晰 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
@@ -25,18 +23,16 @@ st.markdown("""
         font-size: 16px !important;
         min-height: 100px !important;
         border: 2px solid #000 !important;
+        margin-top: 10px !important;
     }
     
-    /* 自定义黄色按钮样式 */
+    /* 黄色按钮样式 */
     div.stButton > button { 
-        transition: all 0.1s !important; 
-        border-radius: 4px !important; 
         background-color: #FFD700 !important; 
         color: #000 !important; 
         font-weight: bold !important;
         border: none !important;
     }
-    div.stButton > button:active { transform: scale(0.95); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -99,28 +95,26 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 定义占位容器，确保位置固定
-    preview_container = st.empty()
+    # 局部更新核心区
+    preview_placeholder = st.container()
     
-    # 按钮移到预览上方
-    if st.button("🚀 立即计算 (查看最新结果)", use_container_width=True):
-        preview_container.markdown('<div class="preview-box">正在计算，请稍候...</div>', unsafe_allow_html=True)
+    if st.button("🚀 立即计算 (更新下方号码)", use_container_width=True):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
-        st.rerun()
-            
-    # 预览区域
-    if st.session_state.res_text:
-        preview = " ".join(st.session_state.res_text.split()[:100])
-        preview_container.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
-    else:
-        preview_container.markdown('<div class="preview-box">暂无结果</div>', unsafe_allow_html=True)
+        # 不使用 st.rerun()，让页面平滑过渡，仅更新 preview_placeholder 内部
     
     st.metric("剩余注数", st.session_state.count)
     
-    # 复制与下载
+    # 仅此处会产生刷新效果
+    with preview_placeholder:
+        if st.session_state.res_text:
+            preview = " ".join(st.session_state.res_text.split()[:100])
+            st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="preview-box">点击上方按钮开始缩水...</div>', unsafe_allow_html=True)
+    
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
