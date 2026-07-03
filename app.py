@@ -7,8 +7,16 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 # --- UI 样式 ---
 st.markdown("""
     <style>
+    /* 页面整体上移，消除顶部留白 */
+    .block-container { padding-top: 1rem !important; }
+    
+    /* 隐藏管理浮窗和官方标志 */
+    #MainMenu, header, footer {visibility: hidden;}
+    [data-testid="stSidebar"] {display: none;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
+    
     .stApp { background-color: #87CEEB !important; }
-    /* 按钮点击瞬间的缩放动效，增加反馈感 */
+    /* 按钮样式 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
     /* 结果框样式 */
@@ -57,12 +65,9 @@ for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums'
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
-# 左侧：过滤面板
+# 左侧：仅过滤选项
 with col_left:
     st.subheader("过滤面板")
-    manual_d = st.text_input("输入胆码 (如 234):")
-    
-    # 将过滤条件设为 checkbox，操作比按钮更顺滑且不会引起页面频繁抖动
     for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
                               ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
                               ('killed_consecutives', '顺子过滤', [2, 3, 4]),
@@ -75,11 +80,11 @@ with col_left:
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-# 右侧：计算与结果面板（现在计算按钮在最上方）
+# 右侧：计算、胆码输入、结果
 with col_right:
     st.subheader("计算面板")
+    manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 立即计算按钮移至右侧顶部
     if st.button("🚀 立即计算", type="primary", use_container_width=True):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
@@ -88,10 +93,7 @@ with col_right:
         st.rerun()
             
     st.metric("剩余注数", st.session_state.count)
-    
-    # 结果显示区
-    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选 -> Ctrl+C 复制):", 
-                 value=st.session_state.res_text, height=250)
+    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选 -> Ctrl+C 复制):", value=st.session_state.res_text, height=250)
     
     if st.session_state.res_text:
         st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
