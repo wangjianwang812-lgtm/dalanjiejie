@@ -13,7 +13,6 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 黑框：高度调整为200px，可容纳七行 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
@@ -28,7 +27,6 @@ st.markdown("""
         margin-top: 10px !important;
     }
     
-    /* 黄色计算按钮 */
     div.stButton > button { 
         background-color: #FFD700 !important; 
         color: #000 !important; 
@@ -38,14 +36,6 @@ st.markdown("""
         width: 100% !important;
         height: 60px !important;
     }
-    
-    /* 闪动动画 */
-    @keyframes flash {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-    div.stButton > button:active { animation: flash 0.3s ease-in-out; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,7 +70,7 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 初始化状态 ---
+# --- 初始化 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
@@ -108,21 +98,20 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 点击计算
+    # 使用按钮点击触发计算
     if st.button("🚀 立即计算"):
-        res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
-                                st.session_state.killed_consecutives, st.session_state.killed_sums)
-        st.session_state.res_text = " ".join(res)
-        st.session_state.count = len(res)
+        # 这一行 st.status 会立刻在页面显示“计算中”，解决了你点击没反应的“卡顿错觉”
+        with st.status("正在进行极速筛选...", expanded=True) as status:
+            res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
+                                    st.session_state.killed_consecutives, st.session_state.killed_sums)
+            st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
+            status.update(label="计算完成！", state="complete", expanded=False)
         st.rerun()
 
-    # 醒目的注数显示
     st.markdown(f"### 剩余注数: {st.session_state.count}")
-    
-    # 结果预览区域
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
     
-    # 底部操作区
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
