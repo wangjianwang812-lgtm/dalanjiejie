@@ -49,14 +49,22 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 强力复制组件 ---
-def copy_button_component(text):
+# --- 强化版复制组件 (静默复制+浮动提醒) ---
+def copy_js_component(text):
     if not text: return
-    # 这段代码生成一个直接挂载到浏览器剪贴板的按钮，点击即复制
+    # 点击即复制，弹出黑色气泡，2秒后自动消失
     html_code = f"""
-    <button onclick="navigator.clipboard.writeText(`{text}`);" 
-    style="width:100%; padding:15px; font-size:18px; background:#ff0000; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
-        📋 复制结果到剪贴板
+    <div id="toast" style="visibility:hidden; min-width:250px; background-color:#333; color:#fff; text-align:center; border-radius:8px; padding:16px; position:fixed; z-index:9999; left:50%; bottom:30px; transform:translateX(-50%); font-size:16px; opacity:0; transition:opacity 0.5s;">
+        ✅ 已复制到剪贴板！
+    </div>
+    <button onclick="
+        navigator.clipboard.writeText(`{text}`);
+        var x = document.getElementById('toast');
+        x.style.visibility = 'visible';
+        x.style.opacity = '1';
+        setTimeout(function(){{ x.style.visibility = 'hidden'; x.style.opacity = '0'; }}, 2000);
+    " style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+        📋 复制结果
     </button>
     """
     components.html(html_code, height=60)
@@ -105,8 +113,8 @@ with col_right:
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 点击复制按钮
+    # 使用组件实现完美复制
     if st.session_state.state['results']:
-        copy_button_component(st.session_state.state['results'])
+        copy_js_component(st.session_state.state['results'])
     
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
