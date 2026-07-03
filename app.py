@@ -2,15 +2,17 @@ import streamlit as st
 from collections import Counter
 
 # --- 页面配置 ---
-st.set_page_config(page_title="牛逼缩水工具", layout="wide")
+st.set_page_config(page_title="极速缩水工具", layout="wide")
 
 # --- UI 样式 ---
 st.markdown("""
     <style>
     .stApp { background-color: #87CEEB !important; }
+    /* 按钮点击瞬间的缩放动效 */
+    div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
+    div.stButton > button:active { transform: scale(0.95); }
+    /* 结果框样式 */
     .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
-    div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border: none !important; border-radius: 4px !important; }
-    div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,45 +53,46 @@ if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 界面 ---
-st.title("🐂 牛逼缩水工具")
+# --- 界面布局 ---
+st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
 with col_left:
     st.subheader("过滤面板")
-    for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
-                              ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
-                              ('killed_consecutives', '顺子过滤', [2, 3, 4]),
-                              ('killed_sums', '和值过滤', list(range(37)))]:
-        st.markdown(f"**{label}**")
-        for i in range(0, len(items), 10):
-            row = items[i:i+10]
-            cols = st.columns(len(row))
-            for idx, item in enumerate(row):
-                if cols[idx].button(str(item), key=f"{key}_{item}", type="primary" if item in st.session_state[key] else "secondary"):
-                    if item in st.session_state[key]: st.session_state[key].remove(item)
-                    else: st.session_state[key].add(item)
-                    st.rerun()
+    # 使用 Form 打包设置，避免每次点击按钮都刷新页面导致的迟钝感
+    with st.form("filter_form"):
+        manual_d = st.text_input("输入胆码 (如 234):")
+        
+        # 渲染过滤选项
+        for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
+                                  ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
+                                  ('killed_consecutives', '顺子过滤', [2, 3, 4]),
+                                  ('killed_sums', '和值过滤', list(range(37)))]:
+            st.markdown(f"**{label}**")
+            for i in range(0, len(items), 10):
+                row = items[i:i+10]
+                row_cols = st.columns(len(row))
+                for idx, item in enumerate(row):
+                    if row_cols[idx].checkbox(str(item), value=item in st.session_state[key], key=f"cb_{key}_{item}"):
+                        st.session_state[key].add(item)
+                    elif item in st.session_state[key]:
+                        st.session_state[key].remove(item)
+        
+        submit_btn = st.form_submit_button("🚀 立即计算", type="primary", use_container_width=True)
+
+    if submit_btn:
+        res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
+                                st.session_state.killed_consecutives, st.session_state.killed_sums)
+        st.session_state.res_text = " ".join(res)
+        st.session_state.count = len(res)
+        st.rerun()
 
 with col_right:
     st.subheader("计算面板")
-    manual_d = st.text_input("输入胆码 (如 234):")
-    
-    # 并排按钮，视觉更平衡，点击不冲突
-    col_b1, col_b2 = st.columns(2)
-    with col_b1:
-        if st.button("🚀 开始计算", type="primary", use_container_width=True):
-            res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
-                                    st.session_state.killed_consecutives, st.session_state.killed_sums)
-            st.session_state.res_text = " ".join(res)
-            st.session_state.count = len(res)
-            st.rerun()
-    with col_b2:
-        if st.session_state.res_text:
-            st.download_button("📥 导出Txt", st.session_state.res_text, "results.txt", use_container_width=True)
-            
     st.metric("剩余注数", st.session_state.count)
     
-    # 这个文本框现在是你最快、最稳的复制源，点一下 Ctrl+A 即可
-    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选再复制):", 
-                 value=st.session_state.res_text, height=250)
+    # 结果显示区 (独立于 Form，点击复制最快)
+    st.text_area("缩水结果 (点击此处按 Ctrl+A 全选复制):", value=st.session_state.res_text, height=250)
+    
+    if st.session_state.res_text:
+        st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
