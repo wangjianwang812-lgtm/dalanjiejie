@@ -18,26 +18,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 原生静默复制组件 ---
-def inject_copy_button(text):
-    # 使用隐藏的 textarea 进行静默复制，无弹窗、无需确认
-    copy_script = f"""
-    <script>
-    function copyText() {{
-        const el = document.createElement('textarea');
-        el.value = `{text}`;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-    }}
-    </script>
-    <button onclick="copyText()" style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        📋 一键静默复制结果
-    </button>
-    """
-    components.html(copy_script, height=60)
-
 # --- 核心逻辑 ---
 def get_num_type(num_str):
     counts = sorted(Counter(num_str).values(), reverse=True)
@@ -63,7 +43,7 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         num_set = set(num_str)
         digits_int = [int(d) for d in num_str]
         
-        # 1. 种子底池逻辑
+        # 1. 种子底池逻辑：必须包含输入胆码中至少一个数字 (如输入234，包含2或3或4的才进入底池)
         if manual_d and not (manual_chars & num_set):
             continue
             
@@ -75,6 +55,17 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         
         results.append(num_str)
     return results
+
+# --- 复制功能组件 ---
+def copy_js_component(text):
+    # 此段代码直接操作浏览器剪贴板，不依赖后端库，绝不会报错
+    html_code = f"""
+    <button onclick="navigator.clipboard.writeText('{text}'); alert('结果已复制到剪贴板！');" 
+    style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+        📋 点击复制结果
+    </button>
+    """
+    components.html(html_code, height=60)
 
 # --- 界面 ---
 if 'state' not in st.session_state:
@@ -120,8 +111,8 @@ with col_right:
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 替换后的静默复制按钮
+    # 这里调用复制组件，确保只有有结果时才显示
     if st.session_state.state['results']:
-        inject_copy_button(st.session_state.state['results'])
+        copy_js_component(st.session_state.state['results'])
     
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
