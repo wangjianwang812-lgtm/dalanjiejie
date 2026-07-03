@@ -14,16 +14,25 @@ st.markdown("""
     div[data-testid="stStatusWidget"] {display: none !important;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 强对比：黑底红字，加宽预览框 */
-    .stCodeBlock code { background-color: #000 !important; color: #ff0000 !important; font-weight: bold !important; font-size: 16px !important; }
+    /* 强视觉：黑底红字预览区 */
+    .preview-box { 
+        background-color: #000 !important; 
+        color: #ff0000 !important; 
+        padding: 15px !important; 
+        border-radius: 5px !important; 
+        font-family: monospace !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        min-height: 100px !important;
+        border: 2px solid #000 !important;
+    }
     
-    /* 按钮样式 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心逻辑 ---
+# --- 核心计算 ---
 def get_num_type(num_str):
     counts = sorted(Counter(num_str).values(), reverse=True)
     if counts == [4]: return "AAAA"
@@ -60,7 +69,7 @@ if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 布局 ---
+# --- 界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -82,10 +91,14 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 按钮点击反馈
-    if st.button("🚀 立即计算 (点击这里查看结果)", type="primary", use_container_width=True):
-        # 先重置状态，制造一个“瞬间刷新”的视觉断层
-        st.session_state.res_text = "计算中..." 
+    # 定义占位容器
+    preview_container = st.empty()
+    
+    if st.button("🚀 立即计算 (查看最新结果)", type="primary", use_container_width=True):
+        # 1. 制造视觉反馈
+        preview_container.markdown('<div class="preview-box">正在计算，请稍候...</div>', unsafe_allow_html=True)
+        
+        # 2. 计算
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
@@ -94,19 +107,18 @@ with col_right:
             
     st.metric("剩余注数", st.session_state.count)
     
-    # 醒目的黑底红字区域
+    # 3. 实时显示预览
     if st.session_state.res_text:
-        st.markdown("**预览 (前100注):**")
         preview = " ".join(st.session_state.res_text.split()[:100])
-        st.code(preview)
+        preview_container.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
     
-    # 复制与下载按钮
-    if st.session_state.res_text and st.session_state.res_text != "计算中...":
+    # 4. 复制与下载
+    if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copy_btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
-            this.innerText = '✅ 复制成功，已获取全部号码！';
+            this.innerText = '✅ 全部号码已复制！';
             setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
         " style="width:100%; height:50px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:16px; cursor:pointer;">
             📋 一键复制全部结果
