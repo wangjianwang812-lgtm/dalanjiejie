@@ -13,6 +13,11 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     div[data-testid="stStatusWidget"] {display: none !important;}
     .stApp { background-color: #87CEEB !important; }
+    
+    /* 强视觉：黑底红字预览框 */
+    .stCodeBlock code { background-color: #000 !important; color: #ff0000 !important; font-weight: bold !important; font-size: 14px !important; }
+    
+    /* 按钮点击回弹效果 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
     </style>
@@ -49,7 +54,7 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 初始化 ---
+# --- 初始化状态 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
@@ -77,6 +82,7 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
+    # 点击计算并触发重载
     if st.button("🚀 立即计算", type="primary", use_container_width=True):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
@@ -86,19 +92,19 @@ with col_right:
             
     st.metric("剩余注数", st.session_state.count)
     
-    # 智能显示区：只显示前 100 个号码
+    # 预览区域
     if st.session_state.res_text:
+        st.markdown("**预览 (前100注):**")
         preview = " ".join(st.session_state.res_text.split()[:100])
-        st.info("预览 (仅显示前100个号码，以确认缩水效果):")
         st.code(preview)
     
-    # 功能区
+    # 极速复制按钮
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copy_btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
-            this.innerText = '✅ 已成功完整复制所有号码！';
+            this.innerText = '✅ 全部复制成功！';
             setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
         " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
             📋 一键复制全部结果
