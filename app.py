@@ -37,37 +37,57 @@ def check_is_shunzi(num_str, n):
 def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
+    
     for i in range(10000):
         num_str = f"{i:04d}"
         num_set = set(num_str)
         digits_int = [int(d) for d in num_str]
-        if manual_d and not (manual_chars & num_set): continue
+        
+        # 1. 种子底池逻辑
+        if manual_d and not (manual_chars & num_set):
+            continue
+            
+        # 2. 过滤逻辑
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
         if get_num_type(num_str) in killed_types: continue
         if any(check_is_shunzi(num_str, n) for n in killed_consecutives): continue
         if sum(digits_int) in killed_sums: continue
+        
         results.append(num_str)
     return results
 
-# --- 强化版复制组件 (静默复制+浮动提醒) ---
+# --- 高级复制组件 ---
 def copy_js_component(text):
     if not text: return
-    # 点击即复制，弹出黑色气泡，2秒后自动消失
     html_code = f"""
-    <div id="toast" style="visibility:hidden; min-width:250px; background-color:#333; color:#fff; text-align:center; border-radius:8px; padding:16px; position:fixed; z-index:9999; left:50%; bottom:30px; transform:translateX(-50%); font-size:16px; opacity:0; transition:opacity 0.5s;">
-        ✅ 已复制到剪贴板！
-    </div>
-    <button onclick="
+    <button id="copyBtn" onclick="
         navigator.clipboard.writeText(`{text}`);
-        var x = document.getElementById('toast');
-        x.style.visibility = 'visible';
-        x.style.opacity = '1';
-        setTimeout(function(){{ x.style.visibility = 'hidden'; x.style.opacity = '0'; }}, 2000);
-    " style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        📋 复制结果
+        var btn = document.getElementById('copyBtn');
+        btn.innerText = '✅ 已复制成功！';
+        btn.style.backgroundColor = '#28a745';
+        setTimeout(function(){{ 
+            btn.innerText = '📋 复制结果到剪贴板 (点击这里)'; 
+            btn.style.backgroundColor = '#000'; 
+        }}, 1500);
+    " style="
+        width: 100%; 
+        height: 50px; 
+        font-size: 18px; 
+        font-weight: bold;
+        background: #000; 
+        color: #fff; 
+        border: 2px solid #ff0000; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        transition: 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    ">
+        📋 复制结果到剪贴板 (点击这里)
     </button>
     """
-    components.html(html_code, height=60)
+    components.html(html_code, height=70)
 
 # --- 界面 ---
 if 'state' not in st.session_state:
@@ -113,7 +133,7 @@ with col_right:
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 使用组件实现完美复制
+    # 显示结果和复制按钮
     if st.session_state.state['results']:
         copy_js_component(st.session_state.state['results'])
     
