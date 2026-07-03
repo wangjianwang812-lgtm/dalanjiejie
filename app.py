@@ -13,7 +13,7 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 黑框优化：固定高度正好放下四行，超出自动滚动 */
+    /* 黑框预览区 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
@@ -21,21 +21,30 @@ st.markdown("""
         border-radius: 5px !important; 
         font-family: monospace !important;
         font-weight: bold !important;
-        font-size: 16px !important;
         height: 120px !important; 
         overflow-y: auto !important;
         border: 2px solid #000 !important;
         margin-top: 10px !important;
     }
     
-    /* 黄色按钮 */
+    /* 立即计算按钮样式与点击闪动动画 */
+    @keyframes flash {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
     div.stButton > button { 
         background-color: #FFD700 !important; 
         color: #000 !important; 
         font-weight: bold !important;
+        font-size: 18px !important;
         border: none !important;
         width: 100% !important;
-        height: 45px !important;
+        height: 60px !important;
+        transition: all 0.2s !important;
+    }
+    div.stButton > button:active { 
+        animation: flash 0.3s ease-in-out; 
     }
     </style>
 """, unsafe_allow_html=True)
@@ -77,7 +86,7 @@ if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 界面 ---
+# --- 界面布局 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -99,20 +108,18 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 局部更新核心区
-    placeholder = st.empty()
-    
+    # 将按钮置于输入框下方，增大尺寸并设置点击闪动效果
     if st.button("🚀 立即计算"):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
+        st.rerun()
 
-    # 在占位符内渲染，避免全页闪烁
-    with placeholder.container():
-        st.metric("剩余注数", st.session_state.count)
-        if st.session_state.res_text:
-            st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
+    st.write(f"**剩余注数: {st.session_state.count}**")
+    
+    # 结果预览框
+    st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
     
     # 底部操作区
     if st.session_state.res_text:
