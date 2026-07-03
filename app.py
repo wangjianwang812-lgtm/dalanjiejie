@@ -13,29 +13,30 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 预览框：黑底红字，固定高度 */
+    /* 核心：黑底红字预览框，加粗加大 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
-        padding: 15px !important; 
+        padding: 20px !important; 
         border-radius: 5px !important; 
         font-family: monospace !important;
-        font-weight: bold !important;
-        font-size: 16px !important;
-        min-height: 100px !important;
+        font-weight: 900 !important;
+        font-size: 20px !important;
+        min-height: 120px !important;
         border: 2px solid #000 !important;
         margin-top: 10px !important;
+        word-wrap: break-word;
     }
     
-    /* 黄色按钮：高亮且无边框 */
+    /* 按钮样式 */
     div.stButton > button { 
-        background-color: #FFD700 !important; 
-        color: #000 !important; 
+        transition: all 0.1s !important; 
+        border-radius: 4px !important; 
+        background-color: #000 !important; 
+        color: #fff !important; 
         font-weight: bold !important;
-        border: none !important;
-        width: 100% !important;
-        height: 50px !important;
     }
+    div.stButton > button:active { transform: scale(0.95); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -94,36 +95,35 @@ with col_left:
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-with col_right:
+# --- 使用 fragment 保证计算时仅右侧区域刷新 ---
+@st.fragment
+def render_right_panel():
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 局部更新占位符，统一管理计算后的结果显示
-    update_area = st.empty()
-    
-    if st.button("🚀 立即计算 (更新注数与号码)"):
+    if st.button("🚀 立即计算"):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
     
-    # 这一块内容会随着点击按钮同步更新，不会闪动左侧面板
-    with update_area:
-        st.metric("剩余注数", st.session_state.count)
-        if st.session_state.res_text:
-            preview = " ".join(st.session_state.res_text.split()[:100])
-            st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
+    st.metric("剩余注数", st.session_state.count)
     
-    # 底部固定操作区
     if st.session_state.res_text:
+        preview = " ".join(st.session_state.res_text.split()[:100])
+        st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
+        
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copy_btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
-            this.innerText = '✅ 全部号码已复制！';
+            this.innerText = '✅ 复制成功';
             setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
-        " style="width:100%; height:50px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:16px; cursor:pointer;">
+        " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
             📋 一键复制全部结果
         </button>
         """, height=60)
         st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
+
+with col_right:
+    render_right_panel()
