@@ -13,7 +13,7 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 黑框预览区 */
+    /* 黑框：高度调整为200px，可容纳七行 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
@@ -21,18 +21,14 @@ st.markdown("""
         border-radius: 5px !important; 
         font-family: monospace !important;
         font-weight: bold !important;
-        height: 120px !important; 
+        font-size: 16px !important;
+        height: 200px !important; 
         overflow-y: auto !important;
         border: 2px solid #000 !important;
         margin-top: 10px !important;
     }
     
-    /* 立即计算按钮样式与点击闪动动画 */
-    @keyframes flash {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
+    /* 黄色计算按钮 */
     div.stButton > button { 
         background-color: #FFD700 !important; 
         color: #000 !important; 
@@ -41,11 +37,15 @@ st.markdown("""
         border: none !important;
         width: 100% !important;
         height: 60px !important;
-        transition: all 0.2s !important;
     }
-    div.stButton > button:active { 
-        animation: flash 0.3s ease-in-out; 
+    
+    /* 闪动动画 */
+    @keyframes flash {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
     }
+    div.stButton > button:active { animation: flash 0.3s ease-in-out; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,13 +80,13 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 初始化 ---
+# --- 初始化状态 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 界面布局 ---
+# --- 界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -108,7 +108,7 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 将按钮置于输入框下方，增大尺寸并设置点击闪动效果
+    # 点击计算
     if st.button("🚀 立即计算"):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
@@ -116,9 +116,10 @@ with col_right:
         st.session_state.count = len(res)
         st.rerun()
 
-    st.write(f"**剩余注数: {st.session_state.count}**")
+    # 醒目的注数显示
+    st.markdown(f"### 剩余注数: {st.session_state.count}")
     
-    # 结果预览框
+    # 结果预览区域
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
     
     # 底部操作区
