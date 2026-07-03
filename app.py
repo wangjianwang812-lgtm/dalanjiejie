@@ -18,17 +18,22 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 一键复制组件 (原生JS实现，无需pyperclip) ---
+# --- 原生静默复制组件 ---
 def inject_copy_button(text):
+    # 使用隐藏的 textarea 进行静默复制，无弹窗、无需确认
     copy_script = f"""
     <script>
     function copyText() {{
-        navigator.clipboard.writeText(`{text}`);
-        alert("已复制到剪贴板！");
+        const el = document.createElement('textarea');
+        el.value = `{text}`;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
     }}
     </script>
     <button onclick="copyText()" style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        📋 点我一键复制结果
+        📋 一键静默复制结果
     </button>
     """
     components.html(copy_script, height=60)
@@ -115,7 +120,7 @@ with col_right:
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 使用原生JS组件替换pyperclip
+    # 替换后的静默复制按钮
     if st.session_state.state['results']:
         inject_copy_button(st.session_state.state['results'])
     
