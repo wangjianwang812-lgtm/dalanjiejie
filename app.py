@@ -12,19 +12,19 @@ st.markdown("""
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
-    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; font-size: 16px !important; }
+    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
     div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border: none !important; border-radius: 4px !important; padding: 5px 10px !important; margin: 2px !important; }
     div.stButton > button:active, div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 一键复制组件 ---
+# --- 一键复制组件 (原生JS实现，无需pyperclip) ---
 def inject_copy_button(text):
     copy_script = f"""
     <script>
     function copyText() {{
         navigator.clipboard.writeText(`{text}`);
-        alert("结果已成功复制到剪贴板！");
+        alert("已复制到剪贴板！");
     }}
     </script>
     <button onclick="copyText()" style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
@@ -52,6 +52,7 @@ def check_is_shunzi(num_str, n):
 def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
+    
     for i in range(10000):
         num_str = f"{i:04d}"
         num_set = set(num_str)
@@ -114,7 +115,8 @@ with col_right:
         
     st.metric("剩余注数", st.session_state.state['count'])
     
+    # 使用原生JS组件替换pyperclip
     if st.session_state.state['results']:
         inject_copy_button(st.session_state.state['results'])
-        
+    
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
