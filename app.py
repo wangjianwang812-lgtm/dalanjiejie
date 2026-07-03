@@ -37,35 +37,30 @@ def check_is_shunzi(num_str, n):
 def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
-    
     for i in range(10000):
         num_str = f"{i:04d}"
         num_set = set(num_str)
         digits_int = [int(d) for d in num_str]
-        
-        # 1. 种子底池逻辑：必须包含输入胆码中至少一个数字 (如输入234，包含2或3或4的才进入底池)
-        if manual_d and not (manual_chars & num_set):
-            continue
-            
-        # 2. 过滤逻辑
+        if manual_d and not (manual_chars & num_set): continue
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
         if get_num_type(num_str) in killed_types: continue
         if any(check_is_shunzi(num_str, n) for n in killed_consecutives): continue
         if sum(digits_int) in killed_sums: continue
-        
         results.append(num_str)
     return results
 
-# --- 复制功能组件 ---
-def copy_js_component(text):
-    # 此段代码直接操作浏览器剪贴板，不依赖后端库，绝不会报错
-    html_code = f"""
-    <button onclick="navigator.clipboard.writeText('{text}'); alert('结果已复制到剪贴板！');" 
-    style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        📋 点击复制结果
-    </button>
+# --- 自动静默复制组件 ---
+def auto_copy_js(text):
+    if not text: return
+    # 这段JS会在页面加载时自动静默写入剪贴板，无需任何交互
+    js_code = f"""
+    <script>
+    navigator.clipboard.writeText(`{text}`).then(() => {{
+        console.log("静默复制成功");
+    }});
+    </script>
     """
-    components.html(html_code, height=60)
+    components.html(js_code, height=0)
 
 # --- 界面 ---
 if 'state' not in st.session_state:
@@ -101,18 +96,19 @@ with col_right:
     st.subheader("计算面板")
     st.session_state.state['manual_d'] = st.text_input("输入胆码 (如 234):", value=st.session_state.state['manual_d'])
     
-    if st.button("🚀 开始缩水计算", type="primary", use_container_width=True):
+    if st.button("🚀 开始缩水并自动复制", type="primary", use_container_width=True):
         res = get_final_numbers(st.session_state.state['manual_d'],
                                 st.session_state.state['killed_spans'], st.session_state.state['killed_types'], 
                                 st.session_state.state['killed_consecutives'], st.session_state.state['killed_sums'])
         st.session_state.state['results'] = " ".join(res)
         st.session_state.state['count'] = len(res)
+        st.toast("✅ 计算完成，结果已自动复制到剪贴板！")
         st.rerun()
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 这里调用复制组件，确保只有有结果时才显示
+    # 执行自动静默复制
     if st.session_state.state['results']:
-        copy_js_component(st.session_state.state['results'])
+        auto_copy_js(st.session_state.state['results'])
     
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
