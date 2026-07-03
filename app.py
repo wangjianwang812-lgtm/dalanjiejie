@@ -4,13 +4,13 @@ from collections import Counter
 # --- 页面配置 ---
 st.set_page_config(page_title="牛逼缩水工具", layout="wide")
 
-# --- UI 样式 (保持你喜欢的颜色) ---
+# --- UI 样式 ---
 st.markdown("""
     <style>
     .stApp { background-color: #87CEEB !important; }
     .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
-    div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border-radius: 4px !important; border: none !important; }
-    div.stButton > button:active, div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
+    div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border: none !important; border-radius: 4px !important; }
+    div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -45,13 +45,13 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 状态管理 ---
+# --- 初始化状态 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- UI 界面 ---
+# --- 界面 ---
 st.title("🐂 牛逼缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -75,18 +75,21 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    if st.button("🚀 开始缩水计算", type="primary", use_container_width=True):
-        res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
-                                st.session_state.killed_consecutives, st.session_state.killed_sums)
-        st.session_state.res_text = " ".join(res)
-        st.session_state.count = len(res)
-        st.rerun()
-        
+    # 并排按钮，视觉更平衡，点击不冲突
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        if st.button("🚀 开始计算", type="primary", use_container_width=True):
+            res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
+                                    st.session_state.killed_consecutives, st.session_state.killed_sums)
+            st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
+            st.rerun()
+    with col_b2:
+        if st.session_state.res_text:
+            st.download_button("📥 导出Txt", st.session_state.res_text, "results.txt", use_container_width=True)
+            
     st.metric("剩余注数", st.session_state.count)
     
-    # 【极致复制体验】：提供下载按钮 + 文本框全选复制
-    if st.session_state.res_text:
-        st.download_button("💾 下载结果 (点击直接下载Txt)", st.session_state.res_text, "results.txt", use_container_width=True)
-    
-    st.info("提示：若需复制文本，请点击下方框内任意位置，按 Ctrl+A 全选，然后按 Ctrl+C。")
-    st.text_area("缩水结果:", value=st.session_state.res_text, height=250)
+    # 这个文本框现在是你最快、最稳的复制源，点一下 Ctrl+A 即可
+    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选再复制):", 
+                 value=st.session_state.res_text, height=250)
