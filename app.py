@@ -11,8 +11,9 @@ st.markdown("""
     .block-container { padding-top: 1rem !important; }
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
+    .stApp { background-color: #87CEEB !important; }
     
-    /* 核心：黑底红字预览框，确保文字清晰 */
+    /* 预览框：黑底红字，固定高度，无闪烁设计 */
     .preview-box { 
         background-color: #000 !important; 
         color: #ff0000 !important; 
@@ -21,17 +22,16 @@ st.markdown("""
         font-family: monospace !important;
         font-weight: bold !important;
         font-size: 16px !important;
-        min-height: 100px !important;
         border: 2px solid #000 !important;
-        margin-top: 10px !important;
     }
     
-    /* 黄色按钮样式 */
+    /* 黄色按钮：高亮且无边框 */
     div.stButton > button { 
         background-color: #FFD700 !important; 
         color: #000 !important; 
         font-weight: bold !important;
         border: none !important;
+        width: 100% !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -95,34 +95,32 @@ with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
     
-    # 局部更新核心区
-    preview_placeholder = st.container()
+    # 局部更新占位符
+    preview_placeholder = st.empty()
     
-    if st.button("🚀 立即计算 (更新下方号码)", use_container_width=True):
+    if st.button("🚀 立即计算 (更新号码)"):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
-        # 不使用 st.rerun()，让页面平滑过渡，仅更新 preview_placeholder 内部
     
-    st.metric("剩余注数", st.session_state.count)
-    
-    # 仅此处会产生刷新效果
+    # 仅更新此处的渲染，不会导致页面其他部分闪烁
     with preview_placeholder:
+        st.metric("剩余注数", st.session_state.count)
         if st.session_state.res_text:
             preview = " ".join(st.session_state.res_text.split()[:100])
             st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="preview-box">点击上方按钮开始缩水...</div>', unsafe_allow_html=True)
+            st.markdown('<div class="preview-box">请点击计算获取缩水结果...</div>', unsafe_allow_html=True)
     
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copy_btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
-            this.innerText = '✅ 全部号码已复制！';
+            this.innerText = '✅ 已完整复制';
             setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
-        " style="width:100%; height:50px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:16px; cursor:pointer;">
+        " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
             📋 一键复制全部结果
         </button>
         """, height=60)
