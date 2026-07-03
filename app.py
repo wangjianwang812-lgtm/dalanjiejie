@@ -1,5 +1,6 @@
 import streamlit as st
 from collections import Counter
+import streamlit.components.v1 as components
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
@@ -7,19 +8,18 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 # --- UI 样式 ---
 st.markdown("""
     <style>
-    /* 页面整体上移，消除顶部留白 */
+    /* 页面整体上移 */
     .block-container { padding-top: 1rem !important; }
-    
-    /* 隐藏管理浮窗和官方标志 */
+    /* 隐藏官方浮窗和页脚 */
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     div[data-testid="stStatusWidget"] {display: none !important;}
     
     .stApp { background-color: #87CEEB !important; }
-    /* 按钮样式 */
+    /* 按钮点击动效 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
-    /* 结果框样式 */
+    /* 结果框 */
     .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -65,7 +65,6 @@ for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums'
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
-# 左侧：仅过滤选项
 with col_left:
     st.subheader("过滤面板")
     for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
@@ -80,7 +79,6 @@ with col_left:
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-# 右侧：计算、胆码输入、结果
 with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
@@ -93,7 +91,19 @@ with col_right:
         st.rerun()
             
     st.metric("剩余注数", st.session_state.count)
-    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选 -> Ctrl+C 复制):", value=st.session_state.res_text, height=250)
+    st.text_area("缩水结果:", value=st.session_state.res_text, height=250, key="result_box")
     
+    # 极速一键复制与下载
     if st.session_state.res_text:
+        components.html("""
+        <button id="copy_btn" onclick="
+            var copyText = window.parent.document.querySelector('textarea[aria-label=\\'缩水结果:\\']');
+            copyText.select();
+            document.execCommand('copy');
+            this.innerText = '✅ 已复制！';
+            setTimeout(() => this.innerText = '📋 一键复制结果', 2000);
+        " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+            📋 一键复制结果
+        </button>
+        """, height=60)
         st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
