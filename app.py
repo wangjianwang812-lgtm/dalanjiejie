@@ -1,13 +1,16 @@
 import streamlit as st
 from collections import Counter
 
+# --- 页面配置 ---
 st.set_page_config(page_title="牛逼缩水工具", layout="wide")
 
+# --- UI 样式 (保持你喜欢的颜色) ---
 st.markdown("""
     <style>
     .stApp { background-color: #87CEEB !important; }
-    div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border-radius: 4px !important; }
-    div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
+    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
+    div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border-radius: 4px !important; border: none !important; }
+    div.stButton > button:active, div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -42,18 +45,18 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 状态初始化 ---
-if 'results' not in st.session_state: st.session_state.results = ""
+# --- 状态管理 ---
+if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
+# --- UI 界面 ---
 st.title("🐂 牛逼缩水工具")
 col_left, col_right = st.columns([1, 1])
 
 with col_left:
     st.subheader("过滤面板")
-    # 这里保持 st.rerun() 以确保交互反馈
     for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
                               ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
                               ('killed_consecutives', '顺子过滤', [2, 3, 4]),
@@ -71,13 +74,19 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码 (如 234):")
+    
     if st.button("🚀 开始缩水计算", type="primary", use_container_width=True):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
-        st.session_state.results = " ".join(res)
+        st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
         st.rerun()
+        
     st.metric("剩余注数", st.session_state.count)
-    if st.session_state.results:
-        st.download_button("💾 下载结果 (导出TXT)", st.session_state.results, "results.txt", use_container_width=True)
-    st.text_area("缩水结果:", value=st.session_state.results, height=250)
+    
+    # 【极致复制体验】：提供下载按钮 + 文本框全选复制
+    if st.session_state.res_text:
+        st.download_button("💾 下载结果 (点击直接下载Txt)", st.session_state.res_text, "results.txt", use_container_width=True)
+    
+    st.info("提示：若需复制文本，请点击下方框内任意位置，按 Ctrl+A 全选，然后按 Ctrl+C。")
+    st.text_area("缩水结果:", value=st.session_state.res_text, height=250)
