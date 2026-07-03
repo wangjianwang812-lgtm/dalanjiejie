@@ -8,23 +8,18 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 # --- UI 样式 ---
 st.markdown("""
     <style>
-    /* 页面整体上移 */
     .block-container { padding-top: 1rem !important; }
-    /* 隐藏官方浮窗和页脚 */
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     div[data-testid="stStatusWidget"] {display: none !important;}
-    
     .stApp { background-color: #87CEEB !important; }
-    /* 按钮点击动效 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
-    /* 结果框 */
     .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心逻辑 ---
+# --- 核心计算 ---
 def get_num_type(num_str):
     counts = sorted(Counter(num_str).values(), reverse=True)
     if counts == [4]: return "AAAA"
@@ -55,13 +50,13 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 初始化状态 ---
+# --- 初始化 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 界面布局 ---
+# --- 界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -91,19 +86,20 @@ with col_right:
         st.rerun()
             
     st.metric("剩余注数", st.session_state.count)
-    st.text_area("缩水结果:", value=st.session_state.res_text, height=250, key="result_box")
+    st.text_area("缩水结果:", value=st.session_state.res_text, height=250)
     
-    # 极速一键复制与下载
     if st.session_state.res_text:
-        components.html("""
+        # 使用内存直接复制全文，彻底告别“复制不完整”
+        copy_text = st.session_state.res_text.replace("'", "\\'")
+        components.html(f"""
         <button id="copy_btn" onclick="
-            var copyText = window.parent.document.querySelector('textarea[aria-label=\\'缩水结果:\\']');
-            copyText.select();
-            document.execCommand('copy');
-            this.innerText = '✅ 已复制！';
-            setTimeout(() => this.innerText = '📋 一键复制结果', 2000);
+            navigator.clipboard.writeText('{copy_text}').then(() => {{
+                var btn = document.getElementById('copy_btn');
+                btn.innerText = '✅ 已成功完整复制所有号码！';
+                setTimeout(() => btn.innerText = '📋 一键复制全部结果', 2000);
+            }});
         " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
-            📋 一键复制结果
+            📋 一键复制全部结果
         </button>
         """, height=60)
         st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
