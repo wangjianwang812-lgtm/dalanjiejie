@@ -49,18 +49,17 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
         results.append(num_str)
     return results
 
-# --- 自动静默复制组件 ---
-def auto_copy_js(text):
+# --- 强力复制组件 ---
+def copy_button_component(text):
     if not text: return
-    # 这段JS会在页面加载时自动静默写入剪贴板，无需任何交互
-    js_code = f"""
-    <script>
-    navigator.clipboard.writeText(`{text}`).then(() => {{
-        console.log("静默复制成功");
-    }});
-    </script>
+    # 这段代码生成一个直接挂载到浏览器剪贴板的按钮，点击即复制
+    html_code = f"""
+    <button onclick="navigator.clipboard.writeText(`{text}`);" 
+    style="width:100%; padding:15px; font-size:18px; background:#ff0000; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
+        📋 复制结果到剪贴板
+    </button>
     """
-    components.html(js_code, height=0)
+    components.html(html_code, height=60)
 
 # --- 界面 ---
 if 'state' not in st.session_state:
@@ -96,19 +95,18 @@ with col_right:
     st.subheader("计算面板")
     st.session_state.state['manual_d'] = st.text_input("输入胆码 (如 234):", value=st.session_state.state['manual_d'])
     
-    if st.button("🚀 开始缩水并自动复制", type="primary", use_container_width=True):
+    if st.button("🚀 开始缩水计算", type="primary", use_container_width=True):
         res = get_final_numbers(st.session_state.state['manual_d'],
                                 st.session_state.state['killed_spans'], st.session_state.state['killed_types'], 
                                 st.session_state.state['killed_consecutives'], st.session_state.state['killed_sums'])
         st.session_state.state['results'] = " ".join(res)
         st.session_state.state['count'] = len(res)
-        st.toast("✅ 计算完成，结果已自动复制到剪贴板！")
         st.rerun()
         
     st.metric("剩余注数", st.session_state.state['count'])
     
-    # 执行自动静默复制
+    # 点击复制按钮
     if st.session_state.state['results']:
-        auto_copy_js(st.session_state.state['results'])
+        copy_button_component(st.session_state.state['results'])
     
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
