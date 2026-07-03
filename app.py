@@ -8,7 +8,7 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #87CEEB !important; }
-    /* 按钮点击瞬间的缩放动效 */
+    /* 按钮点击瞬间的缩放动效，增加反馈感 */
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
     /* 结果框样式 */
@@ -57,42 +57,41 @@ for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums'
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
+# 左侧：过滤面板
 with col_left:
     st.subheader("过滤面板")
-    # 使用 Form 打包设置，避免每次点击按钮都刷新页面导致的迟钝感
-    with st.form("filter_form"):
-        manual_d = st.text_input("输入胆码 (如 234):")
-        
-        # 渲染过滤选项
-        for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
-                                  ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
-                                  ('killed_consecutives', '顺子过滤', [2, 3, 4]),
-                                  ('killed_sums', '和值过滤', list(range(37)))]:
-            st.markdown(f"**{label}**")
-            for i in range(0, len(items), 10):
-                row = items[i:i+10]
-                row_cols = st.columns(len(row))
-                for idx, item in enumerate(row):
-                    if row_cols[idx].checkbox(str(item), value=item in st.session_state[key], key=f"cb_{key}_{item}"):
-                        st.session_state[key].add(item)
-                    elif item in st.session_state[key]:
-                        st.session_state[key].remove(item)
-        
-        submit_btn = st.form_submit_button("🚀 立即计算", type="primary", use_container_width=True)
+    manual_d = st.text_input("输入胆码 (如 234):")
+    
+    # 将过滤条件设为 checkbox，操作比按钮更顺滑且不会引起页面频繁抖动
+    for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
+                              ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "ABC", "ABCD"]),
+                              ('killed_consecutives', '顺子过滤', [2, 3, 4]),
+                              ('killed_sums', '和值过滤', list(range(37)))]:
+        st.markdown(f"**{label}**")
+        cols = st.columns(10)
+        for idx, item in enumerate(items):
+            if cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=f"cb_{key}_{item}"):
+                st.session_state[key].add(item)
+            elif item in st.session_state[key]:
+                st.session_state[key].remove(item)
 
-    if submit_btn:
+# 右侧：计算与结果面板（现在计算按钮在最上方）
+with col_right:
+    st.subheader("计算面板")
+    
+    # 立即计算按钮移至右侧顶部
+    if st.button("🚀 立即计算", type="primary", use_container_width=True):
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
         st.rerun()
-
-with col_right:
-    st.subheader("计算面板")
+            
     st.metric("剩余注数", st.session_state.count)
     
-    # 结果显示区 (独立于 Form，点击复制最快)
-    st.text_area("缩水结果 (点击此处按 Ctrl+A 全选复制):", value=st.session_state.res_text, height=250)
+    # 结果显示区
+    st.text_area("缩水结果 (点击此处，按 Ctrl+A 全选 -> Ctrl+C 复制):", 
+                 value=st.session_state.res_text, height=250)
     
     if st.session_state.res_text:
         st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
