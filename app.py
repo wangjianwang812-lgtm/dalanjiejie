@@ -15,7 +15,6 @@ st.markdown("""
     .stApp { background-color: #87CEEB !important; }
     div.stButton > button { transition: all 0.1s !important; border-radius: 4px !important; background-color: #000 !important; color: #fff !important; }
     div.stButton > button:active { transform: scale(0.95); }
-    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -53,7 +52,6 @@ def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives,
 # --- 初始化 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
-if 'trigger_calc' not in st.session_state: st.session_state.trigger_calc = False
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
@@ -80,28 +78,28 @@ with col_right:
     manual_d = st.text_input("输入胆码 (如 234):")
     
     if st.button("🚀 立即计算", type="primary", use_container_width=True):
-        st.session_state.trigger_calc = True
-        
-    if st.session_state.trigger_calc:
         res = get_final_numbers(manual_d, st.session_state.killed_spans, st.session_state.killed_types, 
                                 st.session_state.killed_consecutives, st.session_state.killed_sums)
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
-        st.session_state.trigger_calc = False
         st.rerun()
             
     st.metric("剩余注数", st.session_state.count)
-    st.text_area("缩水结果:", value=st.session_state.res_text, height=250, key="result_box")
     
+    # 智能显示区：只显示前 100 个号码
+    if st.session_state.res_text:
+        preview = " ".join(st.session_state.res_text.split()[:100])
+        st.info("预览 (仅显示前100个号码，以确认缩水效果):")
+        st.code(preview)
+    
+    # 功能区
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copy_btn" onclick="
-            navigator.clipboard.writeText('{copy_text}').then(() => {{
-                var btn = document.getElementById('copy_btn');
-                btn.innerText = '✅ 全部号码已复制！';
-                setTimeout(() => btn.innerText = '📋 一键复制全部结果', 2000);
-            }});
+            navigator.clipboard.writeText('{copy_text}');
+            this.innerText = '✅ 已成功完整复制所有号码！';
+            setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
         " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
             📋 一键复制全部结果
         </button>
