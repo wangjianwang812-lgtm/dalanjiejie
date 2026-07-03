@@ -1,6 +1,6 @@
 import streamlit as st
 from collections import Counter
-import pyperclip
+import streamlit.components.v1 as components
 
 # --- 页面配置 ---
 st.set_page_config(page_title="牛逼缩水工具", layout="wide")
@@ -12,11 +12,26 @@ st.markdown("""
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
-    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; }
+    .stTextArea textarea { background-color: #000000 !important; color: #ff0000 !important; border: 2px solid #000000 !important; font-size: 16px !important; }
     div.stButton > button { background-color: #000000 !important; color: #ffffff !important; border: none !important; border-radius: 4px !important; padding: 5px 10px !important; margin: 2px !important; }
     div.stButton > button:active, div.stButton > button[kind="primary"] { background-color: #ff0000 !important; }
     </style>
 """, unsafe_allow_html=True)
+
+# --- 一键复制组件 ---
+def inject_copy_button(text):
+    copy_script = f"""
+    <script>
+    function copyText() {{
+        navigator.clipboard.writeText(`{text}`);
+        alert("结果已成功复制到剪贴板！");
+    }}
+    </script>
+    <button onclick="copyText()" style="width:100%; padding:10px; font-size:16px; background:#000; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+        📋 点我一键复制结果
+    </button>
+    """
+    components.html(copy_script, height=60)
 
 # --- 核心逻辑 ---
 def get_num_type(num_str):
@@ -37,13 +52,12 @@ def check_is_shunzi(num_str, n):
 def get_final_numbers(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
-    
     for i in range(10000):
         num_str = f"{i:04d}"
         num_set = set(num_str)
         digits_int = [int(d) for d in num_str]
         
-        # 1. 种子底池逻辑：必须包含输入胆码中至少一个数字 (如输入234，包含2或3或4的才进入底池)
+        # 1. 种子底池逻辑
         if manual_d and not (manual_chars & num_set):
             continue
             
@@ -98,9 +112,9 @@ with col_right:
         st.session_state.state['count'] = len(res)
         st.rerun()
         
-    if st.button("📋 复制结果", use_container_width=True):
-        pyperclip.copy(st.session_state.state['results'])
-        st.toast("已复制")
-    
     st.metric("剩余注数", st.session_state.state['count'])
+    
+    if st.session_state.state['results']:
+        inject_copy_button(st.session_state.state['results'])
+        
     st.text_area("缩水结果:", value=st.session_state.state['results'], height=250)
