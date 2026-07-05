@@ -21,7 +21,6 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 统一按钮样式 */
     .custom-btn {
         width: 100% !important; 
         height: 42px !important; 
@@ -78,15 +77,15 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 调整布局比例为 [1.5, 1]，缩短输入框
-    c_left, c_right = st.columns([1.5, 1])
+    # 核心修改：将比例从 [1.5, 1] 进一步调整为 [1, 1]
+    # 输入框和按钮区域各占一半空间，输入框长度缩减至最短
+    c_left, c_right = st.columns([1, 1])
     
     with c_left:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_right:
-        # 立即计算按钮
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
@@ -97,7 +96,6 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
-        # 复制结果按钮
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
