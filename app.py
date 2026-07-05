@@ -21,7 +21,7 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 强制按钮高度对齐输入框 */
+    /* 调整计算按钮样式 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
         font-weight: bold !important; border: none !important;
@@ -71,7 +71,8 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 严格对齐布局：[2, 1] 比例保证左侧输入框宽度与下方文字对齐，右侧放按钮
+    # 核心修改：将输入区划分为两列，输入框占2/3，按钮占1/3
+    # 这样输入框就不会拉伸到整个页面右侧了
     r_input, r_btn = st.columns([2, 1])
     with r_input:
         manual_d = st.text_input("输入胆码 (如 234):")
@@ -84,7 +85,7 @@ with col_right:
             st.session_state.res_text = " ".join(res)
             st.session_state.count = len(res)
 
-    # 剩余注数与复制按钮并排
+    # 下方剩余注数与复制按钮布局
     r_res, r_copy = st.columns([2, 1])
     with r_res:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
