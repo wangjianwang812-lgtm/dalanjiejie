@@ -21,7 +21,7 @@ st.markdown("""
         margin-top: 10px !important; line-height: 1.8 !important;
     }
     
-    /* 核心修改：将输入框宽度固定为 175px，使其与剩余注数行视觉对齐 */
+    /* 输入框宽度设置 */
     .stTextInput > div > div > input { 
         width: 175px !important; 
         min-width: 175px !important; 
@@ -89,7 +89,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 保持列布局，让计算区域紧凑
+    # 布局采用左右并排，输入框与按钮区紧凑排列
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
@@ -98,6 +98,8 @@ with col_right:
     
     with c_btn:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+        
+        # 立即计算按钮
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -107,10 +109,17 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
+        # 复制结果按钮 (点击后变为“已复制”，2秒后自动恢复)
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
-        <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
-        class="unified-btn">
+        <button id="copyBtn" onclick="
+            navigator.clipboard.writeText('{copy_text}');
+            var btn = document.getElementById('copyBtn');
+            btn.innerText = '✅ 已复制';
+            setTimeout(function() {{
+                btn.innerText = '📋 复制结果';
+            }}, 2000);
+        " class="unified-btn">
             📋 复制结果
         </button>
         """, height=60)
