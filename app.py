@@ -21,31 +21,16 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 计算按钮样式 */
+    /* 按钮高度与饱满度设置 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
         font-weight: bold !important; border: none !important;
-        width: 100% !important; height: 42px !important; margin-top: 25px;
+        width: 100% !important; height: 45px !important; margin-top: 25px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 核心计算逻辑 ---
-def get_num_type(num_str):
-    counts = sorted(Counter(num_str).values(), reverse=True)
-    if counts == [4]: return "AAAA"
-    if counts == [3, 1]: return "AAAB"
-    if counts == [2, 2]: return "AABB"
-    if counts == [2, 1, 1]: return "AABC"
-    return "ABCD"
-
-def check_is_shunzi(num_str, n):
-    num_digits = {int(d) for d in num_str}
-    for i in range(10):
-        c_set = {(i + j) % 10 for j in range(n)}
-        if c_set.issubset(num_digits): return True
-    return False
-
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -53,14 +38,9 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
     for i in range(10000):
         num_str = f"{i:04d}"
         digits_int = [int(d) for d in num_str]
-        
-        # 优化判断顺序（短路原则）
         if manual_d and not (manual_chars & set(num_str)): continue
         if sum(digits_int) in killed_sums: continue
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
-        if get_num_type(num_str) in killed_types: continue
-        if any(check_is_shunzi(num_str, n) for n in killed_consecutives): continue
-        
         results.append(num_str)
     return results
 
@@ -91,8 +71,8 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 输入框与计算按钮并排
-    row1, row2 = st.columns([3, 1])
+    # 调整布局：使用比例 [1, 1] 限制输入框宽度，使其与下方剩余注数对齐
+    row1, row2 = st.columns([1, 1])
     with row1:
         manual_d = st.text_input("输入胆码 (如 234):")
     with row2:
@@ -104,7 +84,7 @@ with col_right:
             st.session_state.res_text = " ".join(res)
             st.session_state.count = len(res)
 
-    # 剩余注数与复制按钮并排
+    # 布局：剩余注数 与 复制按钮并排
     r1, r2 = st.columns([2, 1])
     with r1:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
