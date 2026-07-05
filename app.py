@@ -20,40 +20,23 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 立即计算按钮样式：强制与输入框宽度一致 */
-    div.stButton > button { 
-        background-color: #FFD700 !important; 
-        color: #000 !important; 
-        width: 100% !important; 
-        height: 44px !important; 
-        font-weight: 900 !important; 
-        font-size: 16px !important; 
-        border-radius: 5px !important; 
-        border: none !important;
+    /* 强制限制输入框宽度 */
+    .stTextInput > div > div > input {
+        max-width: 300px !important;
     }
-    div.stButton > button:hover {
-        background-color: #FFC107 !important; 
-        border: 2px solid #000 !important;
-    }
-    /* 统一按钮样式，与上方按钮对齐 */
+    /* 统一按钮样式 */
     .unified-btn {
-        width: 100% !important; 
-        height: 44px !important; 
-        font-weight: 900 !important; 
-        font-size: 16px !important;
+        width: 140px !important; 
+        height: 38px !important; 
+        font-weight: bold !important; 
         border-radius: 5px !important;
         border: none !important;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #FF0000; 
-        color: #FFF;
-        margin-top: 10px;
-    }
-    .unified-btn:hover {
-        background-color: #CC0000 !important; 
-        border: 2px solid #000 !important;
+        background-color: #FFD700; 
+        color: #000;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -99,13 +82,13 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 将组件放在同一列，强制它们宽度对齐
-    c_align = st.columns([1])[0]
+    # 将输入框和按钮限制在较窄的列中
+    c_narrow = st.columns([1, 2])[0]
     
-    with c_align:
+    with c_narrow:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
         
-        # 立即计算按钮：宽度 100% 自动对齐输入框
+        # 立即计算按钮
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -117,13 +100,13 @@ with col_right:
             
         st.markdown(f"### 剩余注数: {st.session_state.count}")
         
-        # 复制结果按钮 (与计算按钮外观完全一致)
+        # 复制结果按钮
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
-        class="unified-btn">
+        class="unified-btn" style="background-color: #FF0000; color: #FFF;">
             📋 复制结果
         </button>
-        """, height=60)
+        """, height=50)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
