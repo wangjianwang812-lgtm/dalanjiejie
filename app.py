@@ -21,29 +21,22 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* --- 按钮样式统一设置 --- */
-    /* 立即计算按钮 (Streamlit 原生) */
+    /* --- 统一按钮样式 --- */
+    /* 立即计算按钮 */
     div.stButton > button { 
-        background-color: #FFD700 !important; /* 金黄色 */
-        color: #000 !important; 
-        font-weight: 900 !important; /* 更粗 */
-        border: none !important;
-        border-radius: 5px !important;
-        height: 50px !important; /* 更饱满 */
-        padding: 0 30px !important; /* 更长 */
-        font-size: 18px !important;
+        background-color: #FFD700 !important; color: #000 !important; 
+        font-weight: 900 !important; border: none !important;
+        border-radius: 5px !important; height: 50px !important; 
+        width: 100% !important; font-size: 18px !important;
     }
-    /* 复制结果按钮 (自定义 HTML) */
+    /* 复制结果按钮 (确保尺寸与上面的按钮完全一致) */
     .custom-btn {
-        background-color: #FF0000 !important; 
-        color: #FFF !important; 
-        font-weight: 900 !important; /* 更粗 */
-        border: none !important; 
-        border-radius: 5px !important;
-        height: 50px !important; /* 与计算按钮一致 */
-        padding: 0 30px !important; /* 与计算按钮一致 */
-        font-size: 18px !important;
-        cursor: pointer;
+        background-color: #FF0000 !important; color: #FFF !important; 
+        font-weight: 900 !important; border: none !important; 
+        border-radius: 5px !important; height: 50px !important; 
+        width: 100% !important; font-size: 18px !important;
+        cursor: pointer; display: flex; align-items: center; 
+        justify-content: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -88,17 +81,15 @@ with col_left:
 
 with col_right:
     st.subheader("计算面板")
+    # 采用 [1, 1] 比例，将输入框和按钮组对齐
+    c1, c2 = st.columns([1, 1])
     
-    # 调整布局比例，保持紧凑
-    c_left, c_right = st.columns([1, 2])
-    
-    with c_left:
+    with c1:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
         st.markdown(f"### 剩余注数: {st.session_state.count}")
-    
-    with c_right:
-        # 将按钮放置在右侧区域，并确保样式生效
-        st.markdown("<div style='display: flex; gap: 10px; margin-top: 25px;'>", unsafe_allow_html=True)
+        
+    with c2:
+        # 将按钮放置在右侧列，二者宽度均为 100%，高度和样式完全统一
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -115,6 +106,5 @@ with col_right:
             📋 复制结果
         </button>
         """, height=60)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
