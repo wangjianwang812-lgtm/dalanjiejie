@@ -17,14 +17,15 @@ st.markdown("""
         background-color: #000 !important; color: #ff0000 !important; 
         padding: 15px !important; border-radius: 5px !important; 
         font-family: monospace !important; font-weight: bold !important;
-        font-size: 16px !important; height: 200px !important; 
+        font-size: 16px !important; height: 350px !important; /* 增加高度 */
         overflow-y: auto !important; border: 2px solid #000 !important;
-        margin-top: 10px !important;
+        margin-top: 10px !important; line-height: 1.8 !important;
     }
+    /* 调整按钮高度以匹配输入框 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
-        font-weight: bold !important; font-size: 18px !important;
-        border: none !important; width: 100% !important; height: 60px !important;
+        font-weight: bold !important; border: none !important;
+        width: 100% !important; height: 40px !important; margin-top: 25px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -45,7 +46,6 @@ def check_is_shunzi(num_str, n):
         if c_set.issubset(num_digits): return True
     return False
 
-# 使用 lru_cache 缓存计算结果，防止重复运算，实现秒响应
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -53,14 +53,11 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
     for i in range(10000):
         num_str = f"{i:04d}"
         digits_int = [int(d) for d in num_str]
-        
-        # 优化判断顺序：从最简单的条件开始（短路原则）
         if manual_d and not (manual_chars & set(num_str)): continue
         if sum(digits_int) in killed_sums: continue
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
         if get_num_type(num_str) in killed_types: continue
         if any(check_is_shunzi(num_str, n) for n in killed_consecutives): continue
-        
         results.append(num_str)
     return results
 
@@ -90,10 +87,15 @@ with col_left:
 
 with col_right:
     st.subheader("计算面板")
-    manual_d = st.text_input("输入胆码 (如 234):")
     
-    if st.button("🚀 立即计算"):
-        # 转换集合为元组，以便被 lru_cache 识别
+    # 调整布局：输入框占3/4，按钮占1/4
+    row1, row2 = st.columns([3, 1])
+    with row1:
+        manual_d = st.text_input("输入胆码 (如 234):")
+    with row2:
+        calc_btn = st.button("🚀 立即计算")
+        
+    if calc_btn:
         res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                           tuple(st.session_state.killed_types), 
                           tuple(st.session_state.killed_consecutives), 
@@ -101,23 +103,21 @@ with col_right:
         st.session_state.res_text = " ".join(res)
         st.session_state.count = len(res)
 
+    # 剩余注数放在原按钮位置
     st.markdown(f"### 剩余注数: {st.session_state.count}")
     
-    # --- 按钮放置区域 ---
+    # 按钮组往上移
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         c1, c2 = st.columns([1, 1])
         with c1:
             components.html(f"""
-            <button id="copy_btn" onclick="
-                navigator.clipboard.writeText('{copy_text}');
-                this.innerText = '✅ 已复制';
-                setTimeout(() => this.innerText = '📋 复制结果', 2000);
-            " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+            <button id="copy_btn" onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" style="width:100%; height:40px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
                 📋 复制结果
             </button>
             """, height=50)
         with c2:
             st.download_button("💾 下载Txt", st.session_state.res_text, "results.txt", use_container_width=True)
 
+    # 黑色显示框加高
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
