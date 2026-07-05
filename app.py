@@ -6,7 +6,7 @@ from collections import Counter
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 (完全保留你的原始 CSS，不动任何布局) ---
+# --- UI 样式 (完全保留你的原始 CSS) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -28,6 +28,7 @@ st.markdown("""
         font-weight: 900 !important; font-size: 18px !important; 
         border-radius: 5px !important; border: none !important;
     }
+    div.stButton > button:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
     .unified-btn {
         width: 175px !important; height: 50px !important; 
         font-weight: 900 !important; font-size: 18px !important;
@@ -36,39 +37,23 @@ st.markdown("""
         background-color: #FF0000 !important; color: #FFF !important;
         margin-top: 10px !important;
     }
+    .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心计算逻辑：精准修复 ---
-def get_num_type(digits):
-    counts = sorted(Counter(digits).values(), reverse=True)
-    if counts == [4]: return "AAAA"
-    if counts == [3, 1]: return "AAAB"
-    if counts == [2, 2]: return "AABB"
-    if counts == [2, 1, 1]: return "AABC"
-    return "ABCD"
-
-def is_shunzi(digits, n):
-    # n 为 2, 3, 4 代表连号长度
-    for i in range(10):
-        # 构造顺子模板 (如 012, 123)
-        target = [(i + j) % 10 for j in range(n)]
-        # 在号码中寻找是否存在该连号序列
-        for start in range(len(digits) - n + 1):
-            if digits[start:start+n] == target: return True
-    return False
-
+# --- 核心计算逻辑 ---
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
-    manual_chars = {int(d) for d in manual_d} if manual_d else set()
+    manual_chars = set(manual_d)
     
     for i in range(10000):
         num_str = f"{i:04d}"
         digits = [int(d) for d in num_str]
+        num_set = set(digits)
         
-        # 1. 胆码：只要含有胆码中的数字即可 (符合 7599 逻辑)
-        if manual_d and not (manual_chars & set(digits)): continue
+        # 1. 胆码过滤 (只要号码里含有胆码中的任意一个即保留)
+        if manual_d and not (manual_chars & set(num_str)): continue
         
         # 2. 和值过滤
         if sum(digits) in killed_sums: continue
@@ -76,11 +61,29 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         # 3. 跨度过滤
         if (max(digits) - min(digits)) in killed_spans: continue
         
-        # 4. 形态过滤
-        if get_num_type(digits) in killed_types: continue
+        # 4. 顺子过滤 (顺序无关，支持循环顺子，只要包含连号组合就杀)
+        is_killed_shunzi = False
+        for n in killed_consecutives:
+            for start_digit in range(10):
+                # 构建顺子模板，支持 9-0-1 等循环
+                shunzi_set = {(start_digit + j) % 10 for j in range(n)}
+                # 只要号码中凑齐了顺子模板的所有数字
+                if shunzi_set.issubset(num_set):
+                    is_killed_shunzi = True
+                    break
+            if is_killed_shunzi: break
+        if is_killed_shunzi: continue
         
-        # 5. 顺子过滤 (修复：只有勾选对应顺子长度才过滤)
-        if any(is_shunzi(digits, n) for n in killed_consecutives): continue
+        # 5. 形态过滤
+        counts = sorted(Counter(digits).values(), reverse=True)
+        type_str = ""
+        if counts == [4]: type_str = "AAAA"
+        elif counts == [3, 1]: type_str = "AAAB"
+        elif counts == [2, 2]: type_str = "AABB"
+        elif counts == [2, 1, 1]: type_str = "AABC"
+        else: type_str = "ABCD"
+        
+        if type_str in killed_types: continue
         
         results.append(num_str)
     return results
