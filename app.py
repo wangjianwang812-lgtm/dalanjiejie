@@ -21,9 +21,11 @@ st.markdown("""
         margin-top: 10px !important; line-height: 1.8 !important;
     }
     
-    /* 核心修改：将输入框容器及框线宽度限制为 80px */
-    .stTextInput { max-width: 80px !important; }
-    .stTextInput > div > div > input { width: 80px !important; }
+    /* 核心修改：将输入框宽度固定为 175px，使其与剩余注数行视觉对齐 */
+    .stTextInput > div > div > input { 
+        width: 175px !important; 
+        min-width: 175px !important; 
+    }
     
     /* 立即计算按钮样式 */
     div.stButton > button { 
@@ -87,8 +89,8 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 采用紧凑排列，让输入框（左）和按钮组（右）形成对比
-    c_in, c_btn = st.columns([1, 2])
+    # 保持列布局，让计算区域紧凑
+    c_in, c_btn = st.columns([1, 1])
     
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
