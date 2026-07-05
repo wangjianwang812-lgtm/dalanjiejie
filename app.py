@@ -21,8 +21,8 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 强制所有按钮样式一致 */
-    div.stButton > button, .custom-btn { 
+    /* 统一按钮样式，确保饱满度和高度一致 */
+    .custom-btn {
         width: 100% !important; 
         height: 42px !important; 
         font-weight: bold !important; 
@@ -30,9 +30,11 @@ st.markdown("""
         border-radius: 4px !important;
         font-size: 16px !important;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 5px;
     }
-    /* 计算按钮颜色 */
-    div.stButton > button { background-color: #FFD700 !important; color: #000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -77,31 +79,31 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 1. 胆码输入框（宽度自动与整列对齐）
-    manual_d = st.text_input("输入胆码 (如 234):", key="manual_d_input")
+    # 调整布局：左侧输入框，右侧放置按钮
+    c_input, c_btns = st.columns([2, 1])
     
-    # 2. 立即计算
-    if st.button("🚀 立即计算"):
-        res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                          tuple(st.session_state.killed_types), 
-                          tuple(st.session_state.killed_consecutives), 
-                          tuple(st.session_state.killed_sums))
-        st.session_state.res_text = " ".join(res)
-        st.session_state.count = len(res)
-        st.rerun()
-
-    # 3. 复制结果 (使用自定义类，确保与上面按钮对齐)
-    if st.session_state.res_text:
+    with c_input:
+        manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
+        st.markdown(f"### 剩余注数: {st.session_state.count}")
+    
+    with c_btns:
+        # 立即计算按钮
+        if st.button("🚀 立即计算"):
+            res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                              tuple(st.session_state.killed_types), 
+                              tuple(st.session_state.killed_consecutives), 
+                              tuple(st.session_state.killed_sums))
+            st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
+            st.rerun()
+            
+        # 复制结果按钮 (使用 HTML 确保与上面按钮样式对齐)
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
-        class="custom-btn" style="background-color: #ff0000; color: #fff; margin-top: 10px;">
+        class="custom-btn" style="background:#ff0000; color:#fff;">
             📋 复制结果
         </button>
         """, height=50)
 
-    # 4. 剩余注数
-    st.markdown(f"### 剩余注数: {st.session_state.count}")
-
-    # 5. 显示框
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
