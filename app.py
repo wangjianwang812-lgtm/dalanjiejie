@@ -36,13 +36,13 @@ st.markdown("""
     }
     div.stButton > button:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
 
-    /* 增大后的复制按钮样式 */
+    /* 优化后的复制结果按钮样式：更大、更显眼 */
     .unified-btn {
         width: 175px !important; height: 50px !important; 
         font-weight: 900 !important; font-size: 18px !important;
         border-radius: 5px !important; border: none !important;
         cursor: pointer; display: flex; align-items: center; justify-content: center;
-        background-color: #FF0000; color: #FFF;
+        background-color: #FF0000 !important; color: #FFF !important;
         margin-top: 10px !important;
     }
     .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
@@ -90,7 +90,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 布局调整：采用紧凑排列
+    # 采用紧凑的左右两列
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
@@ -98,7 +98,6 @@ with col_right:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_btn:
-        # 将按钮对齐到底部，使其与计算结果面板顶部留出舒适空间
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
         
         # 立即计算按钮
@@ -111,7 +110,7 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
-        # 复制结果按钮 (增大尺寸，点击后自动恢复)
+        # 优化后的复制结果按钮 (点击后变为“✅ 已复制”，2秒后恢复)
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button id="copyBtn" onclick="
@@ -124,6 +123,6 @@ with col_right:
         " class="unified-btn">
             📋 复制结果
         </button>
-        """, height=70) # 增加高度以容纳更大的按钮
+        """, height=70)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
