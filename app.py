@@ -21,7 +21,7 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 调整计算按钮样式 */
+    /* 按钮样式 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
         font-weight: bold !important; border: none !important;
@@ -71,12 +71,12 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 核心修改：将输入区划分为两列，输入框占2/3，按钮占1/3
-    # 这样输入框就不会拉伸到整个页面右侧了
-    r_input, r_btn = st.columns([2, 1])
-    with r_input:
+    # 关键布局调整：通过增加空列 [1, 1, 2] 来截断输入框的拉伸
+    # 输入框只占左侧部分，剩余部分留白或放按钮
+    col_a, col_b, col_c = st.columns([1.5, 1, 1.5])
+    with col_a:
         manual_d = st.text_input("输入胆码 (如 234):")
-    with r_btn:
+    with col_b:
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -85,11 +85,11 @@ with col_right:
             st.session_state.res_text = " ".join(res)
             st.session_state.count = len(res)
 
-    # 下方剩余注数与复制按钮布局
-    r_res, r_copy = st.columns([2, 1])
-    with r_res:
+    # 布局：剩余注数 与 复制按钮并排，对齐上方
+    r1, r2 = st.columns([2, 1])
+    with r1:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
-    with r_copy:
+    with r2:
         if st.session_state.res_text:
             copy_text = st.session_state.res_text.replace("'", "\\'")
             components.html(f"""
