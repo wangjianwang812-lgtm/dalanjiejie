@@ -45,17 +45,16 @@ def check_is_shunzi(num_str, n):
         if c_set.issubset(num_digits): return True
     return False
 
-# 缓存计算结果，防止重复运算
+# 使用 lru_cache 缓存计算结果，防止重复运算，实现秒响应
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
-    # 预生成范围
     for i in range(10000):
         num_str = f"{i:04d}"
         digits_int = [int(d) for d in num_str]
         
-        # 优化判断顺序：从最简单的条件开始
+        # 优化判断顺序：从最简单的条件开始（短路原则）
         if manual_d and not (manual_chars & set(num_str)): continue
         if sum(digits_int) in killed_sums: continue
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
@@ -103,17 +102,22 @@ with col_right:
         st.session_state.count = len(res)
 
     st.markdown(f"### 剩余注数: {st.session_state.count}")
-    st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
     
+    # --- 按钮放置区域 ---
     if st.session_state.res_text:
         copy_text = st.session_state.res_text.replace("'", "\\'")
-        components.html(f"""
-        <button id="copy_btn" onclick="
-            navigator.clipboard.writeText('{copy_text}');
-            this.innerText = '✅ 已成功完整复制！';
-            setTimeout(() => this.innerText = '📋 一键复制全部结果', 2000);
-        " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
-            📋 一键复制全部结果
-        </button>
-        """, height=60)
-        st.download_button("💾 下载Txt结果", st.session_state.res_text, "results.txt", use_container_width=True)
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            components.html(f"""
+            <button id="copy_btn" onclick="
+                navigator.clipboard.writeText('{copy_text}');
+                this.innerText = '✅ 已复制';
+                setTimeout(() => this.innerText = '📋 复制结果', 2000);
+            " style="width:100%; height:45px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                📋 复制结果
+            </button>
+            """, height=50)
+        with c2:
+            st.download_button("💾 下载Txt", st.session_state.res_text, "results.txt", use_container_width=True)
+
+    st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
