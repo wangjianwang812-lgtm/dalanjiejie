@@ -77,15 +77,15 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 核心修改：将比例从 [1.5, 1] 进一步调整为 [1, 1]
-    # 输入框和按钮区域各占一半空间，输入框长度缩减至最短
-    c_left, c_right = st.columns([1, 1])
+    # 核心布局修改：采用 [1, 2] 比例，大幅缩短输入框所在的左列
+    c_left, c_right = st.columns([1, 2])
     
     with c_left:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_right:
+        # 将按钮紧凑排列
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
