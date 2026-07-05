@@ -31,6 +31,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 核心计算逻辑 ---
+def get_num_type(num_str):
+    counts = sorted(Counter(num_str).values(), reverse=True)
+    if counts == [4]: return "AAAA"
+    if counts == [3, 1]: return "AAAB"
+    if counts == [2, 2]: return "AABB"
+    if counts == [2, 1, 1]: return "AABC"
+    return "ABCD"
+
+def check_is_shunzi(num_str, n):
+    num_digits = {int(d) for d in num_str}
+    for i in range(10):
+        c_set = {(i + j) % 10 for j in range(n)}
+        if c_set.issubset(num_digits): return True
+    return False
+
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -38,12 +53,14 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
     for i in range(10000):
         num_str = f"{i:04d}"
         digits_int = [int(d) for d in num_str]
-        # 短路优化判断
+        
+        # 优化判断顺序（短路原则）
         if manual_d and not (manual_chars & set(num_str)): continue
         if sum(digits_int) in killed_sums: continue
         if (max(digits_int) - min(digits_int)) in killed_spans: continue
-        # 简化版检查，保留核心逻辑
-        if sum(1 for d in Counter(num_str).values() if d > 1) > 2: pass 
+        if get_num_type(num_str) in killed_types: continue
+        if any(check_is_shunzi(num_str, n) for n in killed_consecutives): continue
+        
         results.append(num_str)
     return results
 
@@ -74,7 +91,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 按钮移至输入框右侧
+    # 输入框与计算按钮并排
     row1, row2 = st.columns([3, 1])
     with row1:
         manual_d = st.text_input("输入胆码 (如 234):")
@@ -87,14 +104,13 @@ with col_right:
             st.session_state.res_text = " ".join(res)
             st.session_state.count = len(res)
 
-    # 布局：剩余注数 与 饱满的复制按钮并排
+    # 剩余注数与复制按钮并排
     r1, r2 = st.columns([2, 1])
     with r1:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     with r2:
         if st.session_state.res_text:
             copy_text = st.session_state.res_text.replace("'", "\\'")
-            # 按钮高度增加，padding 更饱满
             components.html(f"""
             <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
             style="width:100%; height:45px; padding: 10px 0; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:16px; cursor:pointer;">
