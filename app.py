@@ -21,17 +21,29 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
+    /* --- 按钮样式统一设置 --- */
+    /* 立即计算按钮 (Streamlit 原生) */
+    div.stButton > button { 
+        background-color: #FFD700 !important; /* 金黄色 */
+        color: #000 !important; 
+        font-weight: 900 !important; /* 更粗 */
+        border: none !important;
+        border-radius: 5px !important;
+        height: 50px !important; /* 更饱满 */
+        padding: 0 30px !important; /* 更长 */
+        font-size: 18px !important;
+    }
+    /* 复制结果按钮 (自定义 HTML) */
     .custom-btn {
-        width: 100% !important; 
-        height: 42px !important; 
-        font-weight: bold !important; 
+        background-color: #FF0000 !important; 
+        color: #FFF !important; 
+        font-weight: 900 !important; /* 更粗 */
         border: none !important; 
-        border-radius: 4px !important;
-        font-size: 16px !important;
+        border-radius: 5px !important;
+        height: 50px !important; /* 与计算按钮一致 */
+        padding: 0 30px !important; /* 与计算按钮一致 */
+        font-size: 18px !important;
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -77,7 +89,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 核心布局修改：采用 [1, 2] 比例，大幅缩短输入框所在的左列
+    # 调整布局比例，保持紧凑
     c_left, c_right = st.columns([1, 2])
     
     with c_left:
@@ -85,8 +97,8 @@ with col_right:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_right:
-        # 将按钮紧凑排列
-        st.markdown("<br>", unsafe_allow_html=True)
+        # 将按钮放置在右侧区域，并确保样式生效
+        st.markdown("<div style='display: flex; gap: 10px; margin-top: 25px;'>", unsafe_allow_html=True)
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -99,9 +111,10 @@ with col_right:
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
-        class="custom-btn" style="background:#ff0000; color:#fff; border:none; margin-top:5px;">
+        class="custom-btn">
             📋 复制结果
         </button>
-        """, height=55)
+        """, height=60)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
