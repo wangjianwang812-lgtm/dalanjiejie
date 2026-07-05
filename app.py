@@ -1,12 +1,11 @@
 import streamlit as st
-from collections import Counter
 import streamlit.components.v1 as components
 import functools
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 ---
+# --- UI 样式 (高度优化) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -21,22 +20,19 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* --- 统一按钮样式 --- */
-    /* 立即计算按钮 */
-    div.stButton > button { 
-        background-color: #FFD700 !important; color: #000 !important; 
-        font-weight: 900 !important; border: none !important;
-        border-radius: 5px !important; height: 50px !important; 
-        width: 100% !important; font-size: 18px !important;
-    }
-    /* 复制结果按钮 (确保尺寸与上面的按钮完全一致) */
-    .custom-btn {
-        background-color: #FF0000 !important; color: #FFF !important; 
-        font-weight: 900 !important; border: none !important; 
-        border-radius: 5px !important; height: 50px !important; 
-        width: 100% !important; font-size: 18px !important;
-        cursor: pointer; display: flex; align-items: center; 
+    /* 统一按钮样式 */
+    .btn-style {
+        width: 100% !important; 
+        height: 50px !important; 
+        font-weight: 900 !important; 
+        font-size: 18px !important;
+        border-radius: 5px !important;
+        border: none !important;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
         justify-content: center;
+        text-decoration: none;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -81,15 +77,17 @@ with col_left:
 
 with col_right:
     st.subheader("计算面板")
-    # 采用 [1, 1] 比例，将输入框和按钮组对齐
-    c1, c2 = st.columns([1, 1])
     
-    with c1:
+    # 核心修改：通过 [1.5, 1] 比例限制左侧宽度，强制输入框缩短
+    row1, row2 = st.columns([1.5, 1])
+    
+    with row1:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
         st.markdown(f"### 剩余注数: {st.session_state.count}")
-        
-    with c2:
-        # 将按钮放置在右侧列，二者宽度均为 100%，高度和样式完全统一
+    
+    with row2:
+        # 使用 CSS 强制计算按钮样式
+        st.markdown("""<style>div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100%; height: 50px; font-weight: 900; font-size: 18px; border-radius: 5px; border: none; }</style>""", unsafe_allow_html=True)
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -99,10 +97,11 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
+        # 复制结果按钮 (通过 HTML 设置完全相同的尺寸)
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
-        class="custom-btn">
+        class="btn-style" style="background-color: #FF0000; color: #FFF; margin-top: 25px;">
             📋 复制结果
         </button>
         """, height=60)
