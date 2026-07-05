@@ -12,8 +12,6 @@ st.markdown("""
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
-    
-    /* 预览框样式 */
     .preview-box { 
         background-color: #000 !important; color: #ff0000 !important; 
         padding: 15px !important; border-radius: 5px !important; 
@@ -23,34 +21,31 @@ st.markdown("""
         margin-top: 10px !important; line-height: 1.8 !important;
     }
     
-    /* 输入框样式 */
-    .stTextInput > div > div > input { 
-        width: 175px !important; 
-        min-width: 175px !important; 
-    }
+    /* 输入框宽度 */
+    .stTextInput > div > div > input { width: 175px !important; }
     
-    /* 按钮基础样式：统一宽度和高度，确保小白易于点击 */
-    .btn-large { 
+    /* 立即计算按钮 */
+    div.stButton > button { 
+        background-color: #FFD700 !important; color: #000 !important; 
+        width: 175px !important; height: 50px !important; 
+        font-weight: 900 !important; font-size: 18px !important; 
+        border-radius: 5px !important; border: none !important;
+    }
+
+    /* ！！！已放大：复制结果按钮样式 ！！！ */
+    .unified-btn {
         width: 175px !important; 
         height: 50px !important; 
         font-weight: 900 !important; 
-        font-size: 18px !important; 
+        font-size: 18px !important;
         border-radius: 5px !important; 
         border: none !important;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        cursor: pointer; 
+        display: flex; align-items: center; justify-content: center;
+        background-color: #FF0000; color: #FFF;
         margin-top: 10px !important;
     }
-    
-    /* 立即计算按钮颜色 (黄色) */
-    .calc-btn { background-color: #FFD700 !important; color: #000 !important; }
-    .calc-btn:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
-
-    /* 复制按钮颜色 (红色) */
-    .copy-btn { background-color: #FF0000 !important; color: #FFF !important; }
-    .copy-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
+    .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -68,14 +63,18 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         results.append(num_str)
     return results
 
+# --- 初始化 ---
+if 'res_text' not in st.session_state: st.session_state.res_text = ""
+if 'count' not in st.session_state: st.session_state.count = 0
+for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
+    if key not in st.session_state: st.session_state[key] = set()
+
 # --- 界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
-# --- 左侧过滤 ---
 with col_left:
     st.subheader("过滤面板")
-    # ... (过滤逻辑保持不变)
     for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
                               ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
                               ('killed_consecutives', '顺子过滤', [2, 3, 4]),
@@ -83,40 +82,40 @@ with col_left:
         st.markdown(f"**{label}**")
         cols = st.columns(10)
         for idx, item in enumerate(items):
-            if cols[idx % 10].checkbox(str(item), value=item in st.session_state.get(key, set()), key=f"cb_{key}_{item}"):
-                st.session_state.setdefault(key, set()).add(item)
-            elif item in st.session_state.get(key, set()):
+            if cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=f"cb_{key}_{item}"):
+                st.session_state[key].add(item)
+            elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-# --- 右侧计算 ---
 with col_right:
     st.subheader("计算面板")
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
-        st.markdown(f"### 剩余注数: {len(st.session_state.get('res_text', '').split()) if st.session_state.get('res_text') else 0}")
+        st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_btn:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        
-        # 使用自定义 HTML 来确保按钮外观完全符合你的“大按钮”要求
-        if st.button("🚀 立即计算", key="calc_btn"):
-            res = cached_calc(manual_d, tuple(st.session_state.get('killed_spans', [])), ...)
+        if st.button("🚀 立即计算"):
+            res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                              tuple(st.session_state.killed_types), 
+                              tuple(st.session_state.killed_consecutives), 
+                              tuple(st.session_state.killed_sums))
             st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
             st.rerun()
-
-        # 优化后的复制按钮：尺寸与计算按钮保持一致
-        copy_text = st.session_state.get('res_text', '').replace("'", "\\'")
+            
+        copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
-        <button id="copyBtn" class="btn-large copy-btn" onclick="
+        <button id="copyBtn" onclick="
             navigator.clipboard.writeText('{copy_text}');
             var btn = document.getElementById('copyBtn');
             btn.innerText = '✅ 已复制';
-            setTimeout(function() {{
-                btn.innerText = '📋 复制结果';
-            }}, 2000);
-        ">📋 复制结果</button>
-        """, height=70)
+            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
+        " class="unified-btn">
+            📋 复制结果
+        </button>
+        """, height=70) # 高度增加以适配大按钮
 
-    st.markdown(f'<div class="preview-box">{st.session_state.get("res_text", "")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
