@@ -20,42 +20,31 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 输入框样式 */
-    .stTextInput > div > div > input { max-width: 300px !important; }
+    /* 核心修改：将输入框的最大宽度缩短到 180px */
+    .stTextInput > div > div > input { max-width: 180px !important; }
     
     /* 立即计算按钮样式 */
     div.stButton > button { 
-        background-color: #FFD700 !important; 
-        color: #000 !important; 
-        width: 140px !important; 
-        height: 44px !important; 
-        font-weight: 900 !important; 
-        font-size: 16px !important; 
-        border-radius: 5px !important; 
-        border: none !important;
+        background-color: #FFD700 !important; color: #000 !important; 
+        width: 140px !important; height: 44px !important; 
+        font-weight: 900 !important; font-size: 16px !important; 
+        border-radius: 5px !important; border: none !important;
     }
     div.stButton > button:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
 
     /* 复制按钮样式 */
     .unified-btn {
-        width: 140px !important; 
-        height: 44px !important; 
-        font-weight: 900 !important; 
-        font-size: 16px !important;
-        border-radius: 5px !important;
-        border: none !important;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #FF0000; 
-        color: #FFF;
+        width: 140px !important; height: 44px !important; 
+        font-weight: 900 !important; font-size: 16px !important;
+        border-radius: 5px !important; border: none !important;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        background-color: #FF0000; color: #FFF;
     }
     .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心计算逻辑 ---
+# --- 核心计算逻辑 (保持不变) ---
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -96,7 +85,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 细分计算面板：左侧输入框+注数，右侧按钮
+    # 采用 [1, 1] 比例，将输入框和按钮区左右并排，输入框会因此被压缩
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
@@ -104,10 +93,7 @@ with col_right:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_btn:
-        # 给按钮组加个上间距，使其视觉上与输入框对齐
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        
-        # 立即计算按钮
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -117,7 +103,6 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
-        # 复制结果按钮
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
         <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
