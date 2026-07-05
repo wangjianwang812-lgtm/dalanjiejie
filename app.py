@@ -21,28 +21,28 @@ st.markdown("""
         margin-top: 10px !important; line-height: 1.8 !important;
     }
     
-    /* 输入框宽度 */
-    .stTextInput > div > div > input { width: 175px !important; }
+    /* 输入框宽度设置 */
+    .stTextInput > div > div > input { 
+        width: 175px !important; 
+        min-width: 175px !important; 
+    }
     
-    /* 立即计算按钮 */
+    /* 立即计算按钮样式 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
         width: 175px !important; height: 50px !important; 
         font-weight: 900 !important; font-size: 18px !important; 
         border-radius: 5px !important; border: none !important;
     }
+    div.stButton > button:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
 
-    /* ！！！已放大：复制结果按钮样式 ！！！ */
+    /* 优化后的复制结果按钮：增大尺寸，确保小白易于点击 */
     .unified-btn {
-        width: 175px !important; 
-        height: 50px !important; 
-        font-weight: 900 !important; 
-        font-size: 18px !important;
-        border-radius: 5px !important; 
-        border: none !important;
-        cursor: pointer; 
-        display: flex; align-items: center; justify-content: center;
-        background-color: #FF0000; color: #FFF;
+        width: 175px !important; height: 50px !important; 
+        font-weight: 900 !important; font-size: 18px !important;
+        border-radius: 5px !important; border: none !important;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        background-color: #FF0000 !important; color: #FFF !important;
         margin-top: 10px !important;
     }
     .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
@@ -97,6 +97,8 @@ with col_right:
     
     with c_btn:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+        
+        # 立即计算按钮
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
@@ -106,16 +108,17 @@ with col_right:
             st.session_state.count = len(res)
             st.rerun()
             
+        # 优化后的复制结果按钮 (增大尺寸，且点击后 2 秒自动恢复)
         copy_text = st.session_state.res_text.replace("'", "\\'")
         components.html(f"""
-        <button id="copyBtn" onclick="
+        <button id="copyBtn" class="unified-btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
             var btn = document.getElementById('copyBtn');
             btn.innerText = '✅ 已复制';
-            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
-        " class="unified-btn">
-            📋 复制结果
-        </button>
-        """, height=70) # 高度增加以适配大按钮
+            setTimeout(function() {{
+                btn.innerText = '📋 复制结果';
+            }}, 2000);
+        ">📋 复制结果</button>
+        """, height=70)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
