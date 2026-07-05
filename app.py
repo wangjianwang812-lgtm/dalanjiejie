@@ -20,8 +20,8 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 核心修改：将输入框的最大宽度缩短到 180px */
-    .stTextInput > div > div > input { max-width: 180px !important; }
+    /* 极致缩短输入框宽度 */
+    .stTextInput > div > div > input { max-width: 100px !important; }
     
     /* 立即计算按钮样式 */
     div.stButton > button { 
@@ -44,7 +44,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心计算逻辑 (保持不变) ---
+# --- 核心计算逻辑 ---
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -85,7 +85,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 采用 [1, 1] 比例，将输入框和按钮区左右并排，输入框会因此被压缩
+    # 布局调整：左侧输入框，右侧并排放置按钮
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
@@ -93,7 +93,9 @@ with col_right:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_btn:
+        # 微调间距以对齐输入框
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+        
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
