@@ -17,15 +17,15 @@ st.markdown("""
         background-color: #000 !important; color: #ff0000 !important; 
         padding: 15px !important; border-radius: 5px !important; 
         font-family: monospace !important; font-weight: bold !important;
-        font-size: 16px !important; height: 350px !important; /* 增加高度 */
+        font-size: 16px !important; height: 450px !important; /* 进一步加高 */
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 调整按钮高度以匹配输入框 */
+    /* 按钮样式微调 */
     div.stButton > button { 
         background-color: #FFD700 !important; color: #000 !important; 
         font-weight: bold !important; border: none !important;
-        width: 100% !important; height: 40px !important; margin-top: 25px;
+        width: 100% !important; height: 42px !important; margin-top: 25px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -88,36 +88,32 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 调整布局：输入框占3/4，按钮占1/4
+    # 布局：输入框占 3，计算按钮占 1
     row1, row2 = st.columns([3, 1])
     with row1:
         manual_d = st.text_input("输入胆码 (如 234):")
     with row2:
-        calc_btn = st.button("🚀 立即计算")
-        
-    if calc_btn:
-        res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                          tuple(st.session_state.killed_types), 
-                          tuple(st.session_state.killed_consecutives), 
-                          tuple(st.session_state.killed_sums))
-        st.session_state.res_text = " ".join(res)
-        st.session_state.count = len(res)
+        if st.button("🚀 立即计算"):
+            res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                              tuple(st.session_state.killed_types), 
+                              tuple(st.session_state.killed_consecutives), 
+                              tuple(st.session_state.killed_sums))
+            st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
 
-    # 剩余注数放在原按钮位置
-    st.markdown(f"### 剩余注数: {st.session_state.count}")
-    
-    # 按钮组往上移
-    if st.session_state.res_text:
-        copy_text = st.session_state.res_text.replace("'", "\\'")
-        c1, c2 = st.columns([1, 1])
-        with c1:
+    # 布局：剩余注数 与 复制按钮并排
+    r1, r2 = st.columns([2, 1])
+    with r1:
+        st.markdown(f"### 剩余注数: {st.session_state.count}")
+    with r2:
+        if st.session_state.res_text:
+            copy_text = st.session_state.res_text.replace("'", "\\'")
             components.html(f"""
-            <button id="copy_btn" onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" style="width:100%; height:40px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+            <button onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制';" 
+            style="width:100%; height:35px; background:#ff0000; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:20px;">
                 📋 复制结果
             </button>
-            """, height=50)
-        with c2:
-            st.download_button("💾 下载Txt", st.session_state.res_text, "results.txt", use_container_width=True)
+            """, height=60)
 
-    # 黑色显示框加高
+    # 结果显示框
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
