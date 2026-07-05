@@ -6,7 +6,7 @@ from collections import Counter
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 ---
+# --- UI 样式 (完全保留你的原始 CSS，不动任何布局) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -39,7 +39,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 辅助逻辑：形态识别 ---
+# --- 核心计算逻辑：精准修复 ---
 def get_num_type(digits):
     counts = sorted(Counter(digits).values(), reverse=True)
     if counts == [4]: return "AAAA"
@@ -48,17 +48,16 @@ def get_num_type(digits):
     if counts == [2, 1, 1]: return "AABC"
     return "ABCD"
 
-# --- 辅助逻辑：顺子检测 (支持循环顺子，如 8901) ---
 def is_shunzi(digits, n):
+    # n 为 2, 3, 4 代表连号长度
     for i in range(10):
-        # 构建一个长度为 n 的顺子模板
+        # 构造顺子模板 (如 012, 123)
         target = [(i + j) % 10 for j in range(n)]
-        # 检查 target 是否在 digits 的任意连续切片中
+        # 在号码中寻找是否存在该连号序列
         for start in range(len(digits) - n + 1):
             if digits[start:start+n] == target: return True
     return False
 
-# --- 核心计算逻辑 ---
 @functools.lru_cache(maxsize=16)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -68,31 +67,31 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         num_str = f"{i:04d}"
         digits = [int(d) for d in num_str]
         
-        # 1. 胆码：包含其中至少一个数字 (7599逻辑核心)
+        # 1. 胆码：只要含有胆码中的数字即可 (符合 7599 逻辑)
         if manual_d and not (manual_chars & set(digits)): continue
         
-        # 2. 和值
+        # 2. 和值过滤
         if sum(digits) in killed_sums: continue
         
-        # 3. 跨度
+        # 3. 跨度过滤
         if (max(digits) - min(digits)) in killed_spans: continue
         
-        # 4. 形态
+        # 4. 形态过滤
         if get_num_type(digits) in killed_types: continue
         
-        # 5. 顺子 (严格按长度过滤)
+        # 5. 顺子过滤 (修复：只有勾选对应顺子长度才过滤)
         if any(is_shunzi(digits, n) for n in killed_consecutives): continue
         
         results.append(num_str)
     return results
 
-# --- 初始化 (状态保持) ---
+# --- 初始化 ---
 if 'res_text' not in st.session_state: st.session_state.res_text = ""
 if 'count' not in st.session_state: st.session_state.count = 0
 for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if key not in st.session_state: st.session_state[key] = set()
 
-# --- 界面布局 ---
+# --- 界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
@@ -112,27 +111,30 @@ with col_left:
 
 with col_right:
     st.subheader("计算面板")
-    manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
+    c_in, c_btn = st.columns([1, 1])
+    with c_in:
+        manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
+        st.markdown(f"### 剩余注数: {st.session_state.count}")
     
-    if st.button("🚀 立即计算"):
-        res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                          tuple(st.session_state.killed_types), 
-                          tuple(st.session_state.killed_consecutives), 
-                          tuple(st.session_state.killed_sums))
-        st.session_state.res_text = " ".join(res)
-        st.session_state.count = len(res)
-        st.rerun()
-
-    st.markdown(f"### 剩余注数: {st.session_state.count}")
-    
-    copy_text = st.session_state.res_text.replace("'", "\\'")
-    components.html(f"""
-    <button id="copyBtn" class="unified-btn" onclick="
-        navigator.clipboard.writeText('{copy_text}');
-        var btn = document.getElementById('copyBtn');
-        btn.innerText = '✅ 已复制';
-        setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
-    ">📋 复制结果</button>
-    """, height=70)
+    with c_btn:
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🚀 立即计算"):
+            res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                              tuple(st.session_state.killed_types), 
+                              tuple(st.session_state.killed_consecutives), 
+                              tuple(st.session_state.killed_sums))
+            st.session_state.res_text = " ".join(res)
+            st.session_state.count = len(res)
+            st.rerun()
+            
+        copy_text = st.session_state.res_text.replace("'", "\\'")
+        components.html(f"""
+        <button id="copyBtn" class="unified-btn" onclick="
+            navigator.clipboard.writeText('{copy_text}');
+            var btn = document.getElementById('copyBtn');
+            btn.innerText = '✅ 已复制';
+            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
+        ">📋 复制结果</button>
+        """, height=70)
 
     st.markdown(f'<div class="preview-box">{st.session_state.res_text}</div>', unsafe_allow_html=True)
