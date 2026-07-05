@@ -20,8 +20,12 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    /* 极致缩短输入框宽度 */
-    .stTextInput > div > div > input { max-width: 100px !important; }
+    
+    /* 核心修改：强制设定输入框长度为 80px，不再自适应 */
+    .stTextInput > div > div > input { 
+        width: 80px !important; 
+        min-width: 80px !important; 
+    }
     
     /* 立即计算按钮样式 */
     div.stButton > button { 
@@ -85,7 +89,7 @@ with col_left:
 with col_right:
     st.subheader("计算面板")
     
-    # 布局调整：左侧输入框，右侧并排放置按钮
+    # 输入框和按钮并排
     c_in, c_btn = st.columns([1, 1])
     
     with c_in:
@@ -93,9 +97,7 @@ with col_right:
         st.markdown(f"### 剩余注数: {st.session_state.count}")
     
     with c_btn:
-        # 微调间距以对齐输入框
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        
         if st.button("🚀 立即计算"):
             res = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                               tuple(st.session_state.killed_types), 
