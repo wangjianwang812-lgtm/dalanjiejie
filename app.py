@@ -13,43 +13,27 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 预览框样式 */
+    /* 彩色号码标签样式 */
+    .num-tag { font-family: monospace; font-weight: bold; padding: 2px 4px; border-radius: 3px; margin: 2px; display: inline-block; }
+    .c0 { color: #FF5733; } .c1 { color: #33FF57; } .c2 { color: #3357FF; }
+    .c3 { color: #FF33A1; } .c4 { color: #FFD700; } .c5 { color: #00FFFF; }
+    .c6 { color: #FF8C00; } .c7 { color: #ADFF2F; } .c8 { color: #FF00FF; } .c9 { color: #FFFFFF; }
+    
     .preview-box { 
-        background-color: #000 !important; color: #ff0000 !important; 
-        padding: 15px !important; border-radius: 5px !important; 
-        font-family: monospace !important; font-weight: bold !important;
-        font-size: 16px !important; height: 450px !important; 
-        overflow-y: auto !important; border: 2px solid #000 !important;
-        margin-top: 10px !important; line-height: 1.8 !important;
+        background-color: #000 !important; padding: 15px !important; border-radius: 5px !important; 
+        height: 450px !important; overflow-y: auto !important; border: 2px solid #000 !important;
+        margin-top: 10px !important; line-height: 2 !important;
     }
     
-    /* 醒目的剩余注数样式 */
-    .highlight-count { 
-        color: #FFD700 !important; 
-        font-size: 32px !important; 
-        font-weight: 900 !important; 
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
-    }
+    .highlight-count { color: #FFD700 !important; font-size: 32px !important; font-weight: 900 !important; text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important; }
     
-    /* 统一按钮样式 */
     div.stButton > button, .unified-btn {
-        height: 48px !important; 
-        font-weight: 900 !important; 
-        font-size: 15px !important; 
-        border-radius: 8px !important; 
-        border: none !important;
-        transition: all 0.3s ease !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
+        height: 48px !important; font-weight: 900 !important; font-size: 15px !important;
+        border-radius: 8px !important; border: none !important; transition: all 0.3s ease !important;
+        display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;
     }
-    
-    /* 立即计算按钮 */
     div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
     div.stButton > button:hover { background-color: #FFE135 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important; }
-    
-    /* 复制结果按钮 */
     .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
     .unified-btn:hover { background-color: #e0e0e0 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
     </style>
@@ -87,10 +71,8 @@ if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
 
-# --- 碎片化计算面板 ---
 @st.fragment
 def render_right_panel():
-    # 比例调整：输入框短，按钮区域长且在右侧
     c_in, c_btns = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
@@ -115,14 +97,17 @@ def render_right_panel():
                 ">📋 复制结果</button>
                 """, height=60)
 
-    # 醒目的剩余注数显示
     st.markdown(f"### 剩余注数: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    preview = " ".join(st.session_state.res_list[:200])
-    if len(st.session_state.res_list) > 200: preview += "\n\n... (仅预览前200注)"
-    st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
+    # 颜色显示逻辑
+    preview_html = ""
+    for num in st.session_state.res_list[:300]:
+        color_class = f"c{num[0]}" # 根据首位数字分配颜色
+        preview_html += f"<span class='num-tag {color_class}'>{num}</span> "
+    
+    if len(st.session_state.res_list) > 300: preview_html += "<br>... (仅预览前300注)"
+    st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# --- 主界面 ---
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
