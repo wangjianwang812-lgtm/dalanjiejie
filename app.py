@@ -33,15 +33,20 @@ st.markdown("""
         margin-left: 10px !important;
     }
     
+    /* 核心按钮动画交互逻辑 */
     div.stButton > button, .unified-btn {
-        height: 48px !important; font-weight: 900 !important; font-size: 15px !important;
-        border-radius: 8px !important; border: none !important; transition: all 0.3s ease !important;
+        height: 50px !important; font-weight: 900 !important; font-size: 16px !important;
+        border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
         display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;
     }
+    /* 悬停提亮 */
+    div.stButton > button:hover, .unified-btn:hover { filter: brightness(1.2) !important; box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; }
+    /* 点击缩胀 */
+    div.stButton > button:active, .unified-btn:active { transform: scale(0.95) !important; }
+
+    /* 按钮颜色 */
     div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
-    div.stButton > button:hover { background-color: #FFE135 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important; }
     .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
-    .unified-btn:hover { background-color: #e0e0e0 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
     </style>
 """, unsafe_allow_html=True)
 
