@@ -28,8 +28,8 @@ st.markdown("""
         border-radius: 5px !important; border: none !important;
     }
     .unified-btn {
-        width: 100% !important; height: 42px !important; 
-        font-weight: 900 !important; font-size: 15px !important;
+        width: 120px !important; height: 42px !important; 
+        font-weight: 900 !important; font-size: 14px !important;
         border-radius: 5px !important; border: none !important;
         cursor: pointer; display: flex; align-items: center; justify-content: center;
         background-color: #FF0000 !important; color: #FFF !important;
@@ -72,32 +72,33 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 碎片化计算面板 ---
 @st.fragment
 def render_right_panel():
-    # 并排布局：输入框(1.5), 计算按钮(1.5), 复制按钮(1)
-    c1, c2, c3 = st.columns([1.5, 1.5, 1])
-    with c1:
+    # 并排布局：输入框(1), 按钮组(1)
+    c_in, c_btns = st.columns([1, 1])
+    with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
-    with c2:
+    
+    with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        if st.button("🚀 立即计算"):
-            st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                    tuple(st.session_state.killed_types), 
-                                                    tuple(st.session_state.killed_consecutives), 
-                                                    tuple(st.session_state.killed_sums))
-    with c3:
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        if st.session_state.res_list:
-            copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
-            components.html(f"""
-            <button id="copyBtn" class="unified-btn" onclick="
-                navigator.clipboard.writeText('{copy_text}');
-                document.getElementById('copyBtn').innerText = '✅ 已复制';
-                setTimeout(()=>document.getElementById('copyBtn').innerText='📋 复制结果', 2000);
-            ">📋 复制结果</button>
-            """, height=50)
+        btn_1, btn_2 = st.columns([1, 2])
+        with btn_1:
+            if st.button("🚀 立即计算"):
+                st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                        tuple(st.session_state.killed_types), 
+                                                        tuple(st.session_state.killed_consecutives), 
+                                                        tuple(st.session_state.killed_sums))
+        with btn_2:
+            if st.session_state.res_list:
+                copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
+                components.html(f"""
+                <button id="copyBtn" class="unified-btn" onclick="
+                    navigator.clipboard.writeText('{copy_text}');
+                    document.getElementById('copyBtn').innerText = '✅ 已复制';
+                    setTimeout(()=>document.getElementById('copyBtn').innerText='📋 复制结果', 2000);
+                ">📋 复制结果</button>
+                """, height=50)
 
     st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
     
-    # 渲染预览 (截断渲染，防卡死)
     preview = " ".join(st.session_state.res_list[:200])
     if len(st.session_state.res_list) > 200: preview += "\n\n... (仅预览前200注)"
     st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
