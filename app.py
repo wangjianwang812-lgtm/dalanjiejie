@@ -12,6 +12,8 @@ st.markdown("""
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
+    
+    /* 预览框样式 */
     .preview-box { 
         background-color: #000 !important; color: #ff0000 !important; 
         padding: 15px !important; border-radius: 5px !important; 
@@ -20,20 +22,28 @@ st.markdown("""
         overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; line-height: 1.8 !important;
     }
-    .stTextInput > div > div > input { width: 100% !important; }
-    div.stButton > button { 
-        background-color: #FFD700 !important; color: #000 !important; 
-        width: 100% !important; height: 42px !important; 
-        font-weight: 900 !important; font-size: 15px !important; 
-        border-radius: 5px !important; border: none !important;
+    
+    /* 统一按钮样式 */
+    div.stButton > button, .unified-btn {
+        height: 45px !important; 
+        font-weight: 900 !important; 
+        font-size: 15px !important; 
+        border-radius: 8px !important; 
+        border: none !important;
+        transition: all 0.3s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
     }
-    .unified-btn {
-        width: 120px !important; height: 42px !important; 
-        font-weight: 900 !important; font-size: 14px !important;
-        border-radius: 5px !important; border: none !important;
-        cursor: pointer; display: flex; align-items: center; justify-content: center;
-        background-color: #FF0000 !important; color: #FFF !important;
-    }
+    
+    /* 立即计算按钮 */
+    div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
+    div.stButton > button:hover { background-color: #FFE135 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important; }
+    
+    /* 复制结果按钮 */
+    .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
+    .unified-btn:hover { background-color: #e0e0e0 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,34 +82,35 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 碎片化计算面板 ---
 @st.fragment
 def render_right_panel():
-    # 【核心布局修改】：输入框(1), 按钮组(2)，这样输入框会变短
+    # 布局：输入框占1份，按钮区域占2份
     c_in, c_btns = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
     
     with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        # 将两个按钮放在按钮组的左侧，实现并排紧靠
-        col_btn1, col_btn2, col_empty = st.columns([1, 1, 2])
-        with col_btn1:
+        # 按钮内部布局：计算和复制紧挨着
+        b1, b2, b_space = st.columns([1, 1, 1])
+        with b1:
             if st.button("🚀 立即计算"):
                 st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                                                         tuple(st.session_state.killed_types), 
                                                         tuple(st.session_state.killed_consecutives), 
                                                         tuple(st.session_state.killed_sums))
-        with col_btn2:
+        with b2:
             if st.session_state.res_list:
                 copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
                 components.html(f"""
                 <button id="copyBtn" class="unified-btn" onclick="
                     navigator.clipboard.writeText('{copy_text}');
-                    document.getElementById('copyBtn').innerText = '✅ 已复制';
-                    setTimeout(()=>document.getElementById('copyBtn').innerText='📋 复制结果', 2000);
+                    this.innerText = '✅ 已复制';
+                    setTimeout(() => this.innerText = '📋 复制结果', 2000);
                 ">📋 复制结果</button>
                 """, height=50)
 
     st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
     
+    # 截断预览防止卡顿
     preview = " ".join(st.session_state.res_list[:200])
     if len(st.session_state.res_list) > 200: preview += "\n\n... (仅预览前200注)"
     st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
