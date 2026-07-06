@@ -33,11 +33,12 @@ st.markdown("""
         border-radius: 5px !important; border: none !important;
         cursor: pointer; display: flex; align-items: center; justify-content: center;
         background-color: #FF0000 !important; color: #FFF !important;
-        margin-top: 0px !important; margin-bottom: 10px !important;
+        margin-top: 5px !important; margin-bottom: 5px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
+# --- 缓存逻辑 ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -67,12 +68,13 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
     return results
 
 # --- 初始化状态 ---
-for key in ['res_list', 'killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
-    if key not in st.session_state: st.session_state[key] = set() if 'killed' in key else []
+if 'res_list' not in st.session_state: st.session_state.res_list = []
+for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
+    if k not in st.session_state: st.session_state[k] = set()
 
-# --- 碎片化渲染：计算面板 (防止全局卡顿) ---
+# --- 独立碎片组件 (防止页面整体刷新卡顿) ---
 @st.fragment
-def render_calculation_panel():
+def calc_panel():
     manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
     if st.button("🚀 立即计算"):
         st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
@@ -82,28 +84,28 @@ def render_calculation_panel():
     
     st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
     
-    # 放置在指定位置的复制按钮
+    # 放置复制按钮
     if st.session_state.res_list:
         copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
         components.html(f"""
         <button id="copyBtn" class="unified-btn" onclick="
             navigator.clipboard.writeText('{copy_text}');
-            var btn = document.getElementById('copyBtn');
-            btn.innerText = '✅ 已复制全量';
-            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
+            var b = document.getElementById('copyBtn');
+            b.innerText = '✅ 已复制全量';
+            setTimeout(() => b.innerText = '📋 复制结果', 2000);
         ">📋 复制结果</button>
         """, height=70)
         
-    display_text = " ".join(st.session_state.res_list[:300])
-    if len(st.session_state.res_list) > 300:
-        display_text += f"\n\n... (共 {len(st.session_state.res_list)} 注，此处仅预览前300注)"
-    st.markdown(f'<div class="preview-box">{display_text}</div>', unsafe_allow_html=True)
+    # 只渲染前 200 条，彻底消除卡顿
+    preview = " ".join(st.session_state.res_list[:200])
+    if len(st.session_state.res_list) > 200: preview += "\n\n... (仅显示前200注预览)"
+    st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
 
-# --- 主界面 ---
+# --- 主页面 ---
 st.title("⚡ 极速缩水工具")
-col_left, col_right = st.columns([1, 1])
+col_l, col_r = st.columns([1, 1])
 
-with col_left:
+with col_l:
     st.subheader("过滤面板")
     for key, label, items in [('killed_spans', '跨度过滤', range(10)), 
                               ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
@@ -117,5 +119,6 @@ with col_left:
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-with col_right:
-    render_calculation_panel()
+with col_r:
+    st.subheader("计算面板")
+    calc_panel()
