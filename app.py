@@ -24,7 +24,14 @@ st.markdown("""
         margin-top: 10px !important; font-family: monospace; font-weight: bold; font-size: 17px;
     }
     
-    .highlight-count { color: #FFD700 !important; font-size: 32px !important; font-weight: 900 !important; text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important; }
+    /* 饱满的大红色注数 */
+    .highlight-count { 
+        color: #FF0000 !important; 
+        font-size: 40px !important; 
+        font-weight: 900 !important; 
+        text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.4) !important;
+        margin-left: 10px !important;
+    }
     
     div.stButton > button, .unified-btn {
         height: 48px !important; font-weight: 900 !important; font-size: 15px !important;
@@ -98,7 +105,6 @@ def render_right_panel():
 
     st.markdown(f"### 剩余注数: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 彩色渲染逻辑：遍历号码，每一位数字都套用对应的颜色类
     preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
     for num in st.session_state.res_list[:300]:
         colored_num = "".join([f"<span class='n{d}'>{d}</span>" for d in num])
