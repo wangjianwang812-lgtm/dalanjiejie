@@ -14,7 +14,6 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 0-9 数字固定色彩系统 */
     .n0 { color: #FF5733; } .n1 { color: #FFD700; } .n2 { color: #87CEEB; }
     .n3 { color: #33FF57; } .n4 { color: #FF33A1; } .n5 { color: #00FFFF; }
     .n6 { color: #FF8C00; } .n7 { color: #ADFF2F; } .n8 { color: #FF00FF; } .n9 { color: #FFFFFF; }
@@ -30,7 +29,6 @@ st.markdown("""
         text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.4) !important; margin-left: 10px !important;
     }
     
-    /* 按钮交互 */
     div.stButton > button, .unified-btn {
         height: 50px !important; font-weight: 900 !important; font-size: 16px !important;
         border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
@@ -43,7 +41,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 缓存计算函数 (核心逻辑提速) ---
+# --- 缓存计算函数 (优化：使用缓存避免重复高压计算) ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -56,7 +54,6 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         if sum(digits) in killed_sums: continue
         if (max(digits) - min(digits)) in killed_spans: continue
         
-        # 顺子过滤优化
         is_killed = False
         for n in killed_consecutives:
             for s in range(10):
@@ -80,7 +77,7 @@ if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
 
-# --- 渲染面板 (碎片化渲染避免整体刷新) ---
+# --- 计算面板渲染 ---
 @st.fragment
 def render_right_panel():
     c_in, c_btns = st.columns([1, 2])
@@ -92,13 +89,10 @@ def render_right_panel():
         b1, b2, _ = st.columns([1, 1, 1])
         with b1:
             if st.button("🚀 立即计算"):
-                # 轻量化视觉反馈
-                with st.spinner("正在刷新计算..."):
-                    time.sleep(0.1) # 给浏览器缓冲
-                    st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                            tuple(st.session_state.killed_types), 
-                                                            tuple(st.session_state.killed_consecutives), 
-                                                            tuple(st.session_state.killed_sums))
+                st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                        tuple(st.session_state.killed_types), 
+                                                        tuple(st.session_state.killed_consecutives), 
+                                                        tuple(st.session_state.killed_sums))
         with b2:
             if st.session_state.res_list:
                 copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
@@ -108,18 +102,19 @@ def render_right_panel():
 
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 高性能数字拼接
+    # 优化渲染：仅渲染前300个元素，防止浏览器DOM过载导致的卡顿
     preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
     for num in st.session_state.res_list[:300]:
         colored_num = "".join([f"<span class='n{d}'>{d}</span>" for d in num])
         preview_html += f"<div style='margin-right:15px; margin-bottom:5px;'>{colored_num}</div>"
     preview_html += "</div>"
+    
+    if len(st.session_state.res_list) > 300: preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
     st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
-# 过滤面板
 with col_l:
     st.subheader("过滤面板")
     for key, label, items in [('killed_spans', '跨度过滤', range(10)), 
@@ -134,7 +129,6 @@ with col_l:
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 
-# 计算面板
 with col_r:
     st.subheader("计算面板")
     render_right_panel()
