@@ -13,16 +13,15 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
     
-    /* 彩色号码标签样式 */
-    .num-tag { font-family: monospace; font-weight: bold; padding: 2px 4px; border-radius: 3px; margin: 2px; display: inline-block; }
-    .c0 { color: #FF5733; } .c1 { color: #33FF57; } .c2 { color: #3357FF; }
-    .c3 { color: #FF33A1; } .c4 { color: #FFD700; } .c5 { color: #00FFFF; }
-    .c6 { color: #FF8C00; } .c7 { color: #ADFF2F; } .c8 { color: #FF00FF; } .c9 { color: #FFFFFF; }
+    /* 0-9 数字的固定色彩系统 */
+    .n0 { color: #FF5733; } .n1 { color: #FFD700; } .n2 { color: #87CEEB; }
+    .n3 { color: #33FF57; } .n4 { color: #FF33A1; } .n5 { color: #00FFFF; }
+    .n6 { color: #FF8C00; } .n7 { color: #ADFF2F; } .n8 { color: #FF00FF; } .n9 { color: #FFFFFF; }
     
     .preview-box { 
         background-color: #000 !important; padding: 15px !important; border-radius: 5px !important; 
         height: 450px !important; overflow-y: auto !important; border: 2px solid #000 !important;
-        margin-top: 10px !important; line-height: 2 !important;
+        margin-top: 10px !important; font-family: monospace; font-weight: bold; font-size: 17px;
     }
     
     .highlight-count { color: #FFD700 !important; font-size: 32px !important; font-weight: 900 !important; text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important; }
@@ -79,7 +78,7 @@ def render_right_panel():
     
     with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        b1, b2, b_space = st.columns([1, 1, 1])
+        b1, b2, _ = st.columns([1, 1, 1])
         with b1:
             if st.button("🚀 立即计算"):
                 st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
@@ -99,11 +98,12 @@ def render_right_panel():
 
     st.markdown(f"### 剩余注数: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 颜色显示逻辑
-    preview_html = ""
+    # 彩色渲染逻辑：遍历号码，每一位数字都套用对应的颜色类
+    preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
     for num in st.session_state.res_list[:300]:
-        color_class = f"c{num[0]}" # 根据首位数字分配颜色
-        preview_html += f"<span class='num-tag {color_class}'>{num}</span> "
+        colored_num = "".join([f"<span class='n{d}'>{d}</span>" for d in num])
+        preview_html += f"<div style='margin-right:15px; margin-bottom:5px;'>{colored_num}</div>"
+    preview_html += "</div>"
     
     if len(st.session_state.res_list) > 300: preview_html += "<br>... (仅预览前300注)"
     st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
