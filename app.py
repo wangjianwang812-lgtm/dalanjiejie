@@ -1,12 +1,11 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import functools
 from collections import Counter
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 (完全保留你的原始 CSS) ---
+# --- UI 样式 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -28,7 +27,6 @@ st.markdown("""
         font-weight: 900 !important; font-size: 18px !important; 
         border-radius: 5px !important; border: none !important;
     }
-    div.stButton > button:hover { background-color: #FFC107 !important; border: 2px solid #000 !important; }
     .unified-btn {
         width: 175px !important; height: 50px !important; 
         font-weight: 900 !important; font-size: 18px !important;
@@ -37,11 +35,9 @@ st.markdown("""
         background-color: #FF0000 !important; color: #FFF !important;
         margin-top: 10px !important;
     }
-    .unified-btn:hover { background-color: #CC0000 !important; border: 2px solid #000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心计算逻辑 (使用 cache_data 提速) ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -60,8 +56,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
             for start_digit in range(10):
                 shunzi_set = {(start_digit + j) % 10 for j in range(n)}
                 if shunzi_set.issubset(num_set):
-                    is_killed_shunzi = True
-                    break
+                    is_killed_shunzi = True; break
             if is_killed_shunzi: break
         if is_killed_shunzi: continue
         
@@ -71,26 +66,54 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         elif counts == [3, 1]: type_str = "AAAB"
         elif counts == [2, 2]: type_str = "AABB"
         elif counts == [2, 1, 1]: type_str = "AABC"
-        
         if type_str in killed_types: continue
         results.append(num_str)
     return results
 
 # --- 初始化 ---
-if 'res_list' not in st.session_state: st.session_state.res_list = []
-for key in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
-    if key not in st.session_state: st.session_state[key] = set()
+for key in ['res_list', 'killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
+    if key not in st.session_state: st.session_state[key] = set() if 'killed' in key else []
 
-# --- 界面 ---
+# --- 碎片化渲染 (防止全局重绘) ---
+@st.fragment
+def render_calculation_panel():
+    manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
+    if st.button("🚀 立即计算"):
+        st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                tuple(st.session_state.killed_types), 
+                                                tuple(st.session_state.killed_consecutives), 
+                                                tuple(st.session_state.killed_sums))
+    
+    st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
+    
+    # 渲染预览
+    display_content = " ".join(st.session_state.res_list[:300])
+    if len(st.session_state.res_list) > 300:
+        display_content += f"\n\n... (共有 {len(st.session_state.res_list)} 注，仅显示前300个)"
+    st.markdown(f'<div class="preview-box">{display_content}</div>', unsafe_allow_html=True)
+    
+    # 复制按钮
+    if st.session_state.res_list:
+        copy_text = " ".join(st.session_state.res_list)
+        components.html(f"""
+        <button id="copyBtn" class="unified-btn" onclick="
+            navigator.clipboard.writeText('{copy_text}');
+            var btn = document.getElementById('copyBtn');
+            btn.innerText = '✅ 已复制';
+            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
+        ">📋 复制结果</button>
+        """, height=70)
+
+# --- 主界面 ---
 st.title("⚡ 极速缩水工具")
 col_left, col_right = st.columns([1, 1])
 
 with col_left:
     st.subheader("过滤面板")
-    for key, label, items in [('killed_spans', '跨度过滤', list(range(10))), 
+    for key, label, items in [('killed_spans', '跨度过滤', range(10)), 
                               ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
                               ('killed_consecutives', '顺子过滤', [2, 3, 4]),
-                              ('killed_sums', '和值过滤', list(range(37)))]:
+                              ('killed_sums', '和值过滤', range(37))]:
         st.markdown(f"**{label}**")
         cols = st.columns(10)
         for idx, item in enumerate(items):
@@ -101,32 +124,4 @@ with col_left:
 
 with col_right:
     st.subheader("计算面板")
-    c_in, c_btn = st.columns([1, 1])
-    with c_in:
-        manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
-        st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
-    
-    with c_btn:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("🚀 立即计算"):
-            st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                 tuple(st.session_state.killed_types), 
-                                                 tuple(st.session_state.killed_consecutives), 
-                                                 tuple(st.session_state.killed_sums))
-            st.rerun()
-            
-        copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
-        components.html(f"""
-        <button id="copyBtn" class="unified-btn" onclick="
-            navigator.clipboard.writeText('{copy_text}');
-            var btn = document.getElementById('copyBtn');
-            btn.innerText = '✅ 已复制';
-            setTimeout(function() {{ btn.innerText = '📋 复制结果'; }}, 2000);
-        ">📋 复制结果</button>
-        """, height=70)
-
-    # --- 关键优化：只渲染前300个，解决卡顿 ---
-    display_content = " ".join(st.session_state.res_list[:300])
-    if len(st.session_state.res_list) > 300:
-        display_content += f"\n\n... (共有 {len(st.session_state.res_list)} 注，仅显示前300个)"
-    st.markdown(f'<div class="preview-box">{display_content}</div>', unsafe_allow_html=True)
+    render_calculation_panel()
