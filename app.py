@@ -23,9 +23,17 @@ st.markdown("""
         margin-top: 10px !important; line-height: 1.8 !important;
     }
     
+    /* 醒目的剩余注数样式 */
+    .highlight-count { 
+        color: #FFD700 !important; 
+        font-size: 32px !important; 
+        font-weight: 900 !important; 
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+    }
+    
     /* 统一按钮样式 */
     div.stButton > button, .unified-btn {
-        height: 45px !important; 
+        height: 48px !important; 
         font-weight: 900 !important; 
         font-size: 15px !important; 
         border-radius: 8px !important; 
@@ -82,14 +90,13 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 碎片化计算面板 ---
 @st.fragment
 def render_right_panel():
-    # 布局：输入框占1份，按钮区域占2份
+    # 比例调整：输入框短，按钮区域长且在右侧
     c_in, c_btns = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
     
     with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        # 按钮内部布局：计算和复制紧挨着
         b1, b2, b_space = st.columns([1, 1, 1])
         with b1:
             if st.button("🚀 立即计算"):
@@ -106,11 +113,11 @@ def render_right_panel():
                     this.innerText = '✅ 已复制';
                     setTimeout(() => this.innerText = '📋 复制结果', 2000);
                 ">📋 复制结果</button>
-                """, height=50)
+                """, height=60)
 
-    st.markdown(f"### 剩余注数: {len(st.session_state.res_list)}")
+    # 醒目的剩余注数显示
+    st.markdown(f"### 剩余注数: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 截断预览防止卡顿
     preview = " ".join(st.session_state.res_list[:200])
     if len(st.session_state.res_list) > 200: preview += "\n\n... (仅预览前200注)"
     st.markdown(f'<div class="preview-box">{preview}</div>', unsafe_allow_html=True)
