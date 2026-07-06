@@ -24,7 +24,7 @@ st.markdown("""
         margin-top: 10px !important; font-family: monospace; font-weight: bold; font-size: 17px;
     }
     
-    /* 饱满的大红色注数 */
+    /* 饱满的大红色结果字样 */
     .highlight-count { 
         color: #FF0000 !important; 
         font-size: 40px !important; 
@@ -39,12 +39,9 @@ st.markdown("""
         border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
         display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;
     }
-    /* 悬停提亮 */
     div.stButton > button:hover, .unified-btn:hover { filter: brightness(1.2) !important; box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; }
-    /* 点击缩胀 */
     div.stButton > button:active, .unified-btn:active { transform: scale(0.95) !important; }
 
-    /* 按钮颜色 */
     div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
     .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
     </style>
@@ -108,7 +105,8 @@ def render_right_panel():
                 ">📋 复制结果</button>
                 """, height=60)
 
-    st.markdown(f"### 剩余注数: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
+    # 已将标题文字修改为“计算结果”
+    st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
     for num in st.session_state.res_list[:300]:
