@@ -5,7 +5,7 @@ from collections import Counter
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 (保留原样) ---
+# --- UI 样式 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -72,21 +72,22 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 碎片化计算面板 ---
 @st.fragment
 def render_right_panel():
-    # 并排布局：输入框(1), 按钮组(1)
-    c_in, c_btns = st.columns([1, 1])
+    # 【核心布局修改】：输入框(1), 按钮组(2)，这样输入框会变短
+    c_in, c_btns = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码 (如 234):", key="manual_input")
     
     with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        btn_1, btn_2 = st.columns([1, 2])
-        with btn_1:
+        # 将两个按钮放在按钮组的左侧，实现并排紧靠
+        col_btn1, col_btn2, col_empty = st.columns([1, 1, 2])
+        with col_btn1:
             if st.button("🚀 立即计算"):
                 st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                                                         tuple(st.session_state.killed_types), 
                                                         tuple(st.session_state.killed_consecutives), 
                                                         tuple(st.session_state.killed_sums))
-        with btn_2:
+        with col_btn2:
             if st.session_state.res_list:
                 copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
                 components.html(f"""
