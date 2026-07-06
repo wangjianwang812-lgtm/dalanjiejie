@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from collections import Counter
+import time
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
@@ -39,9 +40,12 @@ st.markdown("""
         border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
         display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;
     }
+    /* 悬停提亮 */
     div.stButton > button:hover, .unified-btn:hover { filter: brightness(1.2) !important; box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; }
+    /* 点击缩胀 */
     div.stButton > button:active, .unified-btn:active { transform: scale(0.95) !important; }
 
+    /* 按钮颜色 */
     div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
     .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
     </style>
@@ -90,10 +94,16 @@ def render_right_panel():
         b1, b2, _ = st.columns([1, 1, 1])
         with b1:
             if st.button("🚀 立即计算"):
+                # 视觉闪烁反馈
+                status = st.empty()
+                status.markdown("### 正在刷新计算...")
+                time.sleep(0.15)
+                
                 st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
                                                         tuple(st.session_state.killed_types), 
                                                         tuple(st.session_state.killed_consecutives), 
                                                         tuple(st.session_state.killed_sums))
+                status.empty()
         with b2:
             if st.session_state.res_list:
                 copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
@@ -105,7 +115,6 @@ def render_right_panel():
                 ">📋 复制结果</button>
                 """, height=60)
 
-    # 已将标题文字修改为“计算结果”
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
