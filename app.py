@@ -5,7 +5,7 @@ from collections import Counter
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式完全原样保留，无任何修改 ---
+# --- UI 样式完全原样保留，无修改 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -35,106 +35,102 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 专用函数：仅处理4位跨0循环顺子（9012、8901这类），2/3位完全沿用原生循环取模逻辑
-def check_4_loop_seq(digit_set):
-    nums = sorted([int(x) for x in digit_set])
-    full_extend = nums + [x + 10 for x in nums]
-    for i in range(len(full_extend)):
-        start = full_extend[i]
-        seq_target = {start, start+1, start+2, start+3}
-        real_seq = {num % 10 for num in seq_target}
-        if real_seq.issubset(set(nums)):
+# 全局一次性预生成全部10000条四位数预计算数据（启动仅运行一次）
+if "all_full_data" not in st.session_state:
+    full_list = []
+    for i in range(10000):
+        num_str = f"{i:04d}"
+        digits = [int(c) for c in num_str]
+        num_set = set(digits)
+        sum_val = sum(digits)
+        span_val = max(digits) - min(digits)
+        count_sort = sorted(Counter(digits).values(), reverse=True)
+        if count_sort == [4]:
+            form = "AAAA"
+        elif count_sort == [3, 1]:
+            form = "AAAB"
+        elif count_sort == [2, 2]:
+            form = "AABB"
+        elif count_sort == [2, 1, 1]:
+            form = "AABC"
+        else:
+            form = "ABCD"
+        full_list.append((num_str, num_set, sum_val, span_val, form))
+    st.session_state.all_full_data = full_list
+
+# 顺子判断函数（兼容2/3/4连、跨0循环顺，无功能缺失）
+def seq_kill_check(num_set, seq_len):
+    num_list = list(num_set)
+    extend_nums = num_list + [x + 10 for x in num_list]
+    for start in extend_nums:
+        hit = True
+        for offset in range(1, seq_len):
+            if (start + offset) % 10 not in num_set:
+                hit = False
+                break
+        if hit:
             return True
     return False
 
-@st.cache_data(max_entries=20)
-def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
-    results = []
-    manual_chars = set(manual_d.strip()) if manual_d.strip() else None
-    for i in range(10000):
-        num_str = f"{i:04d}"
-        digits = [int(d) for d in num_str]
-        num_set = set(num_str)
-
-        # 胆码逻辑：包含任意输入数字即保留，原版不变
-        if manual_chars is not None and not (manual_chars & num_set):
+@st.cache_data(max_entries=15, ttl=1800)
+def calc_filter(three_input, kill_span, kill_form, kill_seq, kill_sum):
+    full_data = st.session_state.all_full_data
+    input_digits = set(three_input.strip()) if three_input.strip() and len(three_input.strip()) == 3 and three_input.strip().isdigit() else None
+    step1_pool = []
+    # 第一步：筛选基础池 仅保留包含输入3码任意一个数字的号码（7599条，直接剔除剩余2401条）
+    for item in full_data:
+        num_str, num_set, sum_v, span_v, form_v = item
+        if input_digits is not None:
+            # 完全不含输入3个数字 → 直接排除，不进入后续过滤
+            if input_digits.isdisjoint(num_set):
+                continue
+        step1_pool.append(item)
+    # 第二步：在7599条基础池内执行所有勾选过滤（跨度/形态/顺子/和值，支持全部多选）
+    final_result = []
+    for item in step1_pool:
+        num_str, num_set, sum_v, span_v, form_v = item
+        # 跨度剔除
+        if span_v in kill_span:
             continue
-        
-        # 和值过滤 原版逻辑
-        if sum(digits) in killed_sums:
+        # 和值剔除
+        if sum_v in kill_sum:
             continue
-        # 跨度过滤 原版逻辑
-        span_val = max(digits) - min(digits)
-        if span_val in killed_spans:
+        # 形态剔除
+        if form_v in kill_form:
             continue
-
-        # 顺子完整逻辑：2/3位原生取模循环，4位叠加跨0判断，全部功能齐全
-        is_killed_seq = False
-        for seq_len in killed_consecutives:
-            hit = False
-            # 2连、3连顺子：完全保留你最初的原版代码，无修改
-            if seq_len in (2, 3):
-                for start in range(10):
-                    seq_check = {(start + j) % 10 for j in range(seq_len)}
-                    if seq_check.issubset(num_set):
-                        hit = True
-                        break
-            # 4连顺子：原生判断 + 新增跨0循环顺子判断，双校验不漏杀
-            elif seq_len == 4:
-                # 先跑原生循环取模判断
-                for start in range(10):
-                    seq_check = {(start + j) % 10 for j in range(4)}
-                    if seq_check.issubset(num_set):
-                        hit = True
-                        break
-                # 原生没命中，再校验跨0循环四连（9012、8901）
-                if not hit:
-                    hit = check_4_loop_seq(num_set)
-            if hit:
-                is_killed_seq = True
+        # 顺子剔除（2/3/4连全部生效）
+        seq_hit = False
+        for sl in kill_seq:
+            if seq_kill_check(num_set, sl):
+                seq_hit = True
                 break
-        if is_killed_seq:
+        if seq_hit:
             continue
+        final_result.append(num_str)
+    return final_result
 
-        # 形态判断 原版完整逻辑不动
-        counts = sorted(Counter(digits).values(), reverse=True)
-        type_str = "ABCD"
-        if counts == [4]:
-            type_str = "AAAA"
-        elif counts == [3, 1]:
-            type_str = "AAAB"
-        elif counts == [2, 2]:
-            type_str = "AABB"
-        elif counts == [2, 1, 1]:
-            type_str = "AABC"
-        if type_str in killed_types:
-            continue
-
-        results.append(num_str)
-    return results
-
-# 会话状态初始化，原版不变
+# 会话状态初始化
 if 'res_list' not in st.session_state:
     st.session_state.res_list = []
 filter_keys = ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']
 for k in filter_keys:
-    if k not in st.session_state:
+    if k not in filter_keys:
         st.session_state[k] = set()
 
-# 计算面板Fragment（固定key，按钮点击不失效，复制防WebSocket报错）
+# 计算面板固定逻辑，按钮点击稳定不失效
 @st.fragment
-def render_right_panel():
+def calc_panel():
     col_input, col_btn_area = st.columns([1, 2])
     with col_input:
-        manual_d = st.text_input("输入3位号码:", key="fixed_three_input", placeholder="例：148")
+        three_code = st.text_input("输入3位号码:", key="input_3num", placeholder="例：148")
     with col_btn_area:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         btn_calc, btn_copy, _ = st.columns([1, 1, 1])
         with btn_calc:
-            click_calc = st.button("🚀 立即缩水", key="fixed_calc_btn")
-            if click_calc:
-                st.session_state.res_list = cached_calc(
-                    manual_d,
+            click_run = st.button("🚀 立即缩水", key="btn_calc_run")
+            if click_run:
+                st.session_state.res_list = calc_filter(
+                    three_code,
                     tuple(st.session_state.killed_spans),
                     tuple(st.session_state.killed_types),
                     tuple(st.session_state.killed_consecutives),
@@ -145,50 +141,49 @@ def render_right_panel():
                 full_text = " ".join(st.session_state.res_list)
                 safe_text = full_text.replace("`", "\\`").replace('"', '\\"').replace("'", "\\'")
                 copy_html = f"""
-                <script>window.copyTextStore = "{safe_text}";</script>
+                <script>window.copyStorage = `{safe_text}`;</script>
                 <button class="unified-btn" onclick="
-                    navigator.clipboard.writeText(window.copyTextStore);
+                    navigator.clipboard.writeText(window.copyStorage);
                     this.innerText='✅ 已复制';
                     setTimeout(()=>this.innerText='📋 复制结果', 2000);
                 ">📋 复制结果</button>
                 """
                 components.html(copy_html, height=60)
-
-    # 结果计数展示
+    # 结果数量展示
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
-    # 预览前300条，原版逻辑不变
+    # 预览前300条，不影响完整复制功能
     if st.session_state.res_list:
-        preview_data = st.session_state.res_list[:300]
+        preview_show = st.session_state.res_list[:300]
         html_items = []
-        for num in preview_data:
-            span_digits = "".join([f'<span class="n{d}">{d}</span>' for d in num])
-            html_items.append(f"<div style='margin-right:15px; margin-bottom:5px;'>{span_digits}</div>")
-        preview_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_items)}</div>"
+        for num in preview_show:
+            span_html = "".join([f'<span class="n{d}">{d}</span>' for d in num])
+            html_items.append(f"<div style='margin-right:15px; margin-bottom:5px;'>{span_html}</div>")
+        preview_box_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_items)}</div>"
         if len(st.session_state.res_list) > 300:
-            preview_html += "<br>... (仅预览前300条，点击复制获取全部)"
-        st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
+            preview_box_html += "<br>... (仅预览前300条，复制按钮导出全部)"
+        st.markdown(f'<div class="preview-box">{preview_box_html}</div>', unsafe_allow_html=True)
 
-# 页面布局、过滤面板完全和截图一致，无改动
+# 主页面布局完全和截图一致
 st.title("⚡ 极速缩水工具")
-col_filter_left, col_calc_right = st.columns([1, 1])
-with col_filter_left:
+col_left_filter, col_right_calc = st.columns([1, 1])
+with col_left_filter:
     st.subheader("过滤面板")
-    filter_groups = [
+    filter_group_list = [
         ('killed_spans', '跨度过滤', range(10)),
         ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
         ('killed_consecutives', '顺子过滤', [2, 3, 4]),
         ('killed_sums', '和值过滤', range(37))
     ]
-    for state_key, title, item_list in filter_groups:
+    for state_key, title, item_list in filter_group_list:
         st.markdown(f"**{title}**")
-        cols_row = st.columns(10)
+        row_cols = st.columns(10)
         for idx, val in enumerate(item_list):
             ck_key = f"ck_{state_key}_{val}"
-            selected = cols_row[idx % 10].checkbox(str(val), value=val in st.session_state[state_key], key=ck_key)
+            selected = row_cols[idx % 10].checkbox(str(val), value=val in st.session_state[state_key], key=ck_key)
             if selected:
                 st.session_state[state_key].add(val)
             elif val in st.session_state[state_key]:
                 st.session_state[state_key].remove(val)
-with col_calc_right:
+with col_right_calc:
     st.subheader("计算面板")
-    render_right_panel()
+    calc_panel()
