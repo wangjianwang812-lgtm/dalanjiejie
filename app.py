@@ -35,20 +35,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 新增函数：判断一组数字是否存在N位连续顺子（0=10，循环9-0-1-2算4连）
+# 修复版顺子判断函数，正确识别跨0循环顺子（9,0,1,2）
 def has_consecutive_seq(digit_set, seq_len):
-    digits = sorted(list(digit_set))
-    # 扩展循环数组，处理9,0,1,2这种跨0顺子
-    extended = digits + [d + 10 for d in digits]
-    for i in range(len(extended)):
-        start = extended[i]
-        need = set(start + offset for offset in range(seq_len))
-        match = True
-        for num in need:
-            if num < 10 and num not in digit_set and (num - 10) not in digit_set:
-                match = False
+    digit_list = sorted([int(x) for x in digit_set])
+    full_digits = digit_list + [d + 10 for d in digit_list]
+    for i in range(len(full_digits)):
+        start = full_digits[i]
+        target_seq = [start + offset for offset in range(seq_len)]
+        all_exist = True
+        for num in target_seq:
+            real_num = num % 10
+            if real_num not in digit_list:
+                all_exist = False
                 break
-        if match:
+        if all_exist:
             return True
     return False
 
@@ -63,22 +63,22 @@ def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, kil
         digits = [int(d) for d in num_str]
         num_set = set(num_str)
 
-        # 1. 三码筛选：不含任意一个输入数字直接剔除
+        # 1. 三码筛选：完全不含输入3个数字直接剔除
         if target_digits is not None:
             if target_digits.isdisjoint(num_set):
                 continue
 
-        # 2. 跨度过滤：勾选的跨度直接剔除
+        # 2. 跨度过滤
         span_val = max(digits) - min(digits)
         if span_val in killed_spans:
             continue
 
-        # 3. 和值过滤：勾选和值剔除
+        # 3. 和值过滤
         sum_val = sum(digits)
         if sum_val in killed_sums:
             continue
 
-        # 4. 顺子过滤（重写逻辑，支持0循环顺4连）
+        # 4. 顺子过滤（修复后无报错，支持9012循环四连顺）
         skip_seq = False
         for seq_n in killed_consecutives:
             if has_consecutive_seq(num_set, seq_n):
@@ -112,7 +112,7 @@ for k in filter_keys:
     if k not in st.session_state:
         st.session_state[k] = set()
 
-# 计算面板Fragment
+# 计算面板Fragment（固定Key，防止点击失效）
 @st.fragment()
 def render_right_panel():
     col_input, col_btn_area = st.columns([1, 2])
@@ -159,7 +159,7 @@ def render_right_panel():
             preview_html += "<br>... (预览仅展示前300条，点击复制获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 主页面布局完全不变
+# 主页面布局完全和截图一致，无改动
 st.title("⚡ 极速缩水工具")
 col_filter_left, col_calc_right = st.columns([1, 1])
 with col_filter_left:
