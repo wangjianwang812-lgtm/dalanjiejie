@@ -109,12 +109,13 @@ def calc_filter(three_input, kill_span, kill_form, kill_seq, kill_sum):
         final_result.append(num_str)
     return final_result
 
-# 会话状态初始化
+# ====================== 修复点1：修正会话状态初始化逻辑，彻底解决KeyError ======================
 if 'res_list' not in st.session_state:
     st.session_state.res_list = []
 filter_keys = ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']
+# 正确逻辑：判断key是否不存在于session_state，而非filter_keys列表
 for k in filter_keys:
-    if k not in filter_keys:
+    if k not in st.session_state:
         st.session_state[k] = set()
 
 # 计算面板固定逻辑，按钮点击稳定不失效
