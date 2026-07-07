@@ -29,19 +29,16 @@ st.markdown("""
         text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.4) !important; margin-left: 10px !important;
     }
     
-    div.stButton > button, .unified-btn {
+    div.stButton > button {
         height: 50px !important; font-weight: 900 !important; font-size: 16px !important;
         border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
-        display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;
+        width: 100% !important; background-color: #FFD700 !important; color: #000 !important;
     }
-    div.stButton > button:hover, .unified-btn:hover { filter: brightness(1.2) !important; box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; }
-    div.stButton > button:active, .unified-btn:active { transform: scale(0.95) !important; }
-    div.stButton > button { background-color: #FFD700 !important; color: #000 !important; width: 100% !important; }
-    .unified-btn { background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; width: 100% !important; }
+    div.stButton > button:hover { filter: brightness(1.2) !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 缓存计算函数 (优化：使用缓存避免重复高压计算) ---
+# --- 计算函数 ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -72,7 +69,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         results.append(num_str)
     return results
 
-# 初始化状态
+# --- 状态初始化 ---
 if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
@@ -80,38 +77,27 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 计算面板渲染 ---
 @st.fragment
 def render_right_panel():
-    c_in, c_btns = st.columns([1, 2])
+    c_in, _ = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码:", key="manual_input")
     
-    with c_btns:
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        b1, b2, _ = st.columns([1, 1, 1])
-        with b1:
-            if st.button("🚀 立即计算"):
-                st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                        tuple(st.session_state.killed_types), 
-                                                        tuple(st.session_state.killed_consecutives), 
-                                                        tuple(st.session_state.killed_sums))
-        with b2:
-            if st.session_state.res_list:
-                copy_text = " ".join(st.session_state.res_list).replace("'", "\\'")
-                components.html(f"""
-                <button class="unified-btn" onclick="navigator.clipboard.writeText('{copy_text}'); this.innerText='✅ 已复制'; setTimeout(()=>this.innerText='📋 复制结果', 2000);">📋 复制结果</button>
-                """, height=60)
-
+    if st.button("🚀 立即计算"):
+        st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                tuple(st.session_state.killed_types), 
+                                                tuple(st.session_state.killed_consecutives), 
+                                                tuple(st.session_state.killed_sums))
+    
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 优化渲染：仅渲染前300个元素，防止浏览器DOM过载导致的卡顿
-    preview_html = "<div style='display:flex; flex-wrap:wrap;'>"
-    for num in st.session_state.res_list[:300]:
-        colored_num = "".join([f"<span class='n{d}'>{d}</span>" for d in num])
-        preview_html += f"<div style='margin-right:15px; margin-bottom:5px;'>{colored_num}</div>"
-    preview_html += "</div>"
-    
-    if len(st.session_state.res_list) > 300: preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
-    st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
+    if st.session_state.res_list:
+        display_list = st.session_state.res_list[:300]
+        html_content = "".join([f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in display_list])
+        st.markdown(f'<div class="preview-box" style="display:flex; flex-wrap:wrap;">{html_content}</div>', unsafe_allow_html=True)
+        
+        if len(st.session_state.res_list) > 300: 
+            st.info(f"已显示前300条，共 {len(st.session_state.res_list)} 条结果")
 
+# --- 主布局 ---
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
