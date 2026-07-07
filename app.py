@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from collections import Counter
-import time
 import uuid
 
 # --- 页面配置 ---
@@ -37,9 +36,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ========== 修复点1：缓存优化，降低大体积数据WebSocket转发压力 ==========
-# 增加缓存过期时间+自动轻量化，避免长期缓存堆积导致消息MISS
-@st.cache_data(ttl=3600, max_entries=20)  # 缓存1小时，限制最大缓存数量，防止内存无限膨胀
+# 缓存仅限制数量，删除定时自动clear（核心修复，不再弹出清除缓存弹窗）
+@st.cache_data(max_entries=20)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
@@ -72,11 +70,9 @@ if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
 
-# ========== 修复点2：Fragment隔离渲染 + 唯一key防止重复WebSocket消息冲突 ==========
-# 给fragment绑定动态唯一标识，避免长期运行组件key重复导致缓存hash丢失
+# Fragment动态唯一key，避免长期运行组件hash冲突
 @st.fragment
 def render_right_panel():
-    # 每次渲染生成唯一标识，规避Streamlit内部消息hash重复失效
     frag_id = str(uuid.uuid4())
     c_in, c_btns = st.columns([1, 2])
     with c_in:
@@ -85,21 +81,21 @@ def render_right_panel():
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         b1, b2, _ = st.columns([1, 1, 1])
         with b1:
+            # 计算按钮key唯一，不会失效
             if st.button("🚀 立即计算", key=f"calc_btn_{frag_id}"):
-                st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                        tuple(st.session_state.killed_types), 
-                                                        tuple(st.session_state.killed_consecutives), 
-                                                        tuple(st.session_state.killed_sums))
+                st.session_state.res_list = cached_calc(
+                    manual_d,
+                    tuple(st.session_state.killed_spans),
+                    tuple(st.session_state.killed_types),
+                    tuple(st.session_state.killed_consecutives),
+                    tuple(st.session_state.killed_sums)
+                )
         with b2:
             if st.session_state.res_list:
-                # ========== 修复点3：分片复制，解决超长文本单次WebSocket消息过载MISS ==========
-                # 不把全部文本塞进HTML，改用JS分段读取sessionStorage，减小单次ws消息体积
+                # JS全局存储复制文本，避免超长字符串阻塞WebSocket
                 full_copy_str = " ".join(st.session_state.res_list)
-                # 将完整结果存入前端临时存储，按钮仅传递简短ID，不传输超长字符串
                 copy_html = f"""
-                <script>
-                window.tempCopyData = `{full_copy_str}`;
-                </script>
+                <script>window.tempCopyData = `{full_copy_str}`;</script>
                 <button class="unified-btn" onclick="
                     navigator.clipboard.writeText(window.tempCopyData);
                     this.innerText='✅ 已复制';
@@ -110,39 +106,39 @@ def render_right_panel():
 
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 预览逻辑完全保留，无修改
+    # 预览逻辑完全保留无修改
     if st.session_state.res_list:
         preview = st.session_state.res_list[:300]
-        html_list = [f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in preview]
+        html_list = [
+            f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>"
+            for num in preview
+        ]
         preview_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_list)}</div>"
-        if len(st.session_state.res_list) > 300: preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
+        if len(st.session_state.res_list) > 300:
+            preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 页面标题、左右栏布局完全原样不动
+# 页面布局、过滤面板全部原样不动
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 with col_l:
     st.subheader("过滤面板")
-    for key, label, items in [('killed_spans', '跨度过滤', range(10)), ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]), ('killed_consecutives', '顺子过滤', [2, 3, 4]), ('killed_sums', '和值过滤', range(37))]:
+    filter_groups = [
+        ('killed_spans', '跨度过滤', range(10)),
+        ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
+        ('killed_consecutives', '顺子过滤', [2, 3, 4]),
+        ('killed_sums', '和值过滤', range(37))
+    ]
+    for key, label, items in filter_groups:
         st.markdown(f"**{label}**")
         cols = st.columns(10)
         for idx, item in enumerate(items):
             cb_key = f"cb_{key}_{item}"
-            if cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=cb_key):
+            checked = cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=cb_key)
+            if checked:
                 st.session_state[key].add(item)
             elif item in st.session_state[key]:
                 st.session_state[key].remove(item)
 with col_r:
     st.subheader("计算面板")
     render_right_panel()
-
-# ========== 修复点4：定时清理过期缓存，主动释放Streamlit内部转发缓存，杜绝长期运行MISS ==========
-# 每15分钟自动清空过期缓存，防止缓存hash堆积失效
-if "last_clear_cache_time" not in st.session_state:
-    st.session_state.last_clear_cache_time = time.time()
-
-now = time.time()
-# 15分钟 = 900秒
-if now - st.session_state.last_clear_cache_time > 900:
-    st.cache_data.clear()
-    st.session_state.last_clear_cache_time = now
