@@ -35,19 +35,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 4连顺子专用跨0判断函数，2/3顺子沿用原版逻辑不变
-def check_4_loop_seq(digit_set):
-    nums = sorted([int(x) for x in digit_set])
-    full_extend = nums + [x + 10 for x in nums]
-    for i in range(len(full_extend)):
-        start = full_extend[i]
-        seq_target = {start, start+1, start+2, start+3}
-        real_seq = {num % 10 for num in seq_target}
-        if real_seq.issubset(set(nums)):
+# 通用顺子判断函数：统一处理2/3/4连，支持跨0循环（9,0,1 / 8,9,0,1）
+def has_continuous(digit_set, length):
+    num_list = sorted([int(x) for x in digit_set])
+    # 扩展数组处理跨0循环
+    extended = num_list + [x + 10 for x in num_list]
+    for start in extended:
+        match = True
+        for offset in range(1, length):
+            target = start + offset
+            real = target % 10
+            if real not in num_list:
+                match = False
+                break
+        if match:
             return True
     return False
 
-# 核心计算函数（完全还原你最初业务逻辑，仅补全4连循环顺）
+# 核心计算函数
 @st.cache_data(max_entries=20)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -62,41 +67,24 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         if manual_chars is not None and manual_chars.isdisjoint(num_set):
             continue
         
-        # 和值过滤 原版逻辑
+        # 和值过滤
         if sum(digits) in killed_sums:
             continue
-        # 跨度过滤 原版逻辑
+        # 跨度过滤
         span_val = max(digits) - min(digits)
         if span_val in killed_spans:
             continue
 
-        # 顺子逻辑：2、3位完全原版，4位叠加跨0判断，全部功能齐全
+        # 顺子过滤：2、3、4连统一使用新判断函数，全部支持跨0循环
         is_killed = False
         for n in killed_consecutives:
-            hit = False
-            # 2连、3连顺子 原版代码不动
-            if n in (2,3):
-                for s in range(10):
-                    seq_check = {(s + j) % 10 for j in range(n)}
-                    if seq_check.issubset(num_set):
-                        hit = True
-                        break
-            # 4连顺子：原版判断 + 跨0循环判断
-            elif n == 4:
-                for s in range(10):
-                    seq_check = {(s + j) % 10 for j in range(4)}
-                    if seq_check.issubset(num_set):
-                        hit = True
-                        break
-                if not hit:
-                    hit = check_4_loop_seq(num_set)
-            if hit:
+            if has_continuous(num_set, n):
                 is_killed = True
                 break
         if is_killed:
             continue
         
-        # 形态判断 原版完整逻辑无修改
+        # 形态判断
         counts = sorted(Counter(digits).values(), reverse=True)
         type_str = "ABCD"
         if counts == [4]:
@@ -113,16 +101,15 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         results.append(num_str)
     return results
 
-# ========== 修复1：正确初始化会话状态，彻底解决KeyError报错 ==========
+# 正确初始化会话状态，解决KeyError报错
 if 'res_list' not in st.session_state:
     st.session_state.res_list = []
 filter_keys = ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']
-# 正确判断：不存在才创建空集合，不会页面崩溃
 for k in filter_keys:
     if k not in st.session_state:
         st.session_state[k] = set()
 
-# 计算面板，固定key不失效，复制防长文本ws报错
+# 计算面板
 @st.fragment
 def render_right_panel():
     c_in, c_btns = st.columns([1, 2])
@@ -155,7 +142,7 @@ def render_right_panel():
     # 结果数量展示
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 预览逻辑原版不动，展示前300条
+    # 预览前300条
     if st.session_state.res_list:
         preview = st.session_state.res_list[:300]
         html_list = [f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in preview]
@@ -164,7 +151,7 @@ def render_right_panel():
             preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 页面布局、左侧过滤面板完全和你截图一致，无删减
+# 页面布局、过滤面板完全不变
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 with col_l:
