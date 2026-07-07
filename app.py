@@ -1,7 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
 from collections import Counter
-import time
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
@@ -13,32 +11,27 @@ st.markdown("""
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
-    
     .n0 { color: #FF5733; } .n1 { color: #FFD700; } .n2 { color: #87CEEB; }
     .n3 { color: #33FF57; } .n4 { color: #FF33A1; } .n5 { color: #00FFFF; }
     .n6 { color: #FF8C00; } .n7 { color: #ADFF2F; } .n8 { color: #FF00FF; } .n9 { color: #FFFFFF; }
-    
     .preview-box { 
         background-color: #000 !important; padding: 15px !important; border-radius: 5px !important; 
         height: 450px !important; overflow-y: auto !important; border: 2px solid #000 !important;
         margin-top: 10px !important; font-family: monospace; font-weight: bold; font-size: 17px;
     }
-    
     .highlight-count { 
         color: #FF0000 !important; font-size: 40px !important; font-weight: 900 !important;
         text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.4) !important; margin-left: 10px !important;
     }
-    
     div.stButton > button {
         height: 50px !important; font-weight: 900 !important; font-size: 16px !important;
-        border-radius: 10px !important; border: none !important; transition: all 0.2s ease !important;
-        width: 100% !important; background-color: #FFD700 !important; color: #000 !important;
+        border-radius: 10px !important; border: none !important; width: 100% !important;
+        background-color: #FFD700 !important; color: #000 !important;
     }
-    div.stButton > button:hover { filter: brightness(1.2) !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 计算函数 ---
+# --- 核心计算函数 ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -50,7 +43,6 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         if manual_d and not (manual_chars & set(num_str)): continue
         if sum(digits) in killed_sums: continue
         if (max(digits) - min(digits)) in killed_spans: continue
-        
         is_killed = False
         for n in killed_consecutives:
             for s in range(10):
@@ -58,7 +50,6 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
                     is_killed = True; break
             if is_killed: break
         if is_killed: continue
-        
         counts = sorted(Counter(digits).values(), reverse=True)
         type_str = "ABCD"
         if counts == [4]: type_str = "AAAA"
@@ -77,27 +68,30 @@ for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
 # --- 计算面板渲染 ---
 @st.fragment
 def render_right_panel():
-    c_in, _ = st.columns([1, 2])
+    c_in, c_btns = st.columns([1, 2])
     with c_in:
         manual_d = st.text_input("输入胆码:", key="manual_input")
-    
-    if st.button("🚀 立即计算"):
-        st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                tuple(st.session_state.killed_types), 
-                                                tuple(st.session_state.killed_consecutives), 
-                                                tuple(st.session_state.killed_sums))
+    with c_btns:
+        if st.button("🚀 立即计算"):
+            st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                    tuple(st.session_state.killed_types), 
+                                                    tuple(st.session_state.killed_consecutives), 
+                                                    tuple(st.session_state.killed_sums))
     
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     if st.session_state.res_list:
+        # 显示前300条结果
         display_list = st.session_state.res_list[:300]
         html_content = "".join([f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in display_list])
         st.markdown(f'<div class="preview-box" style="display:flex; flex-wrap:wrap;">{html_content}</div>', unsafe_allow_html=True)
         
-        if len(st.session_state.res_list) > 300: 
-            st.info(f"已显示前300条，共 {len(st.session_state.res_list)} 条结果")
+        # 复制功能（原生实现，避免组件报错）
+        st.info(f"显示前 300 条，完整共 {len(st.session_state.res_list)} 条")
+        copy_text = " ".join(st.session_state.res_list)
+        st.code(copy_text, language=None) # 这里将代码展示为文本，方便用户直接全选复制，比之前的按钮更稳定
 
-# --- 主布局 ---
+# --- 主页面布局 ---
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
