@@ -35,12 +35,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 缓存计算函数（修改3码筛选逻辑：包含任意一个数字即保留）
+# 新增函数：判断一组数字是否存在N位连续顺子（0=10，循环9-0-1-2算4连）
+def has_consecutive_seq(digit_set, seq_len):
+    digits = sorted(list(digit_set))
+    # 扩展循环数组，处理9,0,1,2这种跨0顺子
+    extended = digits + [d + 10 for d in digits]
+    for i in range(len(extended)):
+        start = extended[i]
+        need = set(start + offset for offset in range(seq_len))
+        match = True
+        for num in need:
+            if num < 10 and num not in digit_set and (num - 10) not in digit_set:
+                match = False
+                break
+        if match:
+            return True
+    return False
+
 @st.cache_data(max_entries=20)
 def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     input_code = three_code.strip()
-    # 目标数字集合：输入3位数字拆分成集合
     target_digits = set(input_code) if len(input_code) == 3 and input_code.isdigit() else None
 
     for i in range(10000):
@@ -48,32 +63,31 @@ def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, kil
         digits = [int(d) for d in num_str]
         num_set = set(num_str)
 
-        # ========== 核心修改：只要号码包含3个数字中任意1个就保留 ==========
+        # 1. 三码筛选：不含任意一个输入数字直接剔除
         if target_digits is not None:
-            # 完全不含输入的3个数字 → 直接剔除
             if target_digits.isdisjoint(num_set):
                 continue
 
-        # 剔除勾选的和值
-        if sum(digits) in killed_sums:
-            continue
-        # 剔除勾选的跨度
+        # 2. 跨度过滤：勾选的跨度直接剔除
         span_val = max(digits) - min(digits)
         if span_val in killed_spans:
             continue
-        # 剔除包含勾选长度顺子的号码
-        skip_flag = False
-        for n in killed_consecutives:
-            for start in range(10):
-                seq_set = {(start + j) % 10 for j in range(n)}
-                if seq_set.issubset(num_set):
-                    skip_flag = True
-                    break
-            if skip_flag:
-                break
-        if skip_flag:
+
+        # 3. 和值过滤：勾选和值剔除
+        sum_val = sum(digits)
+        if sum_val in killed_sums:
             continue
-        # 判断号码形态，剔除勾选形态
+
+        # 4. 顺子过滤（重写逻辑，支持0循环顺4连）
+        skip_seq = False
+        for seq_n in killed_consecutives:
+            if has_consecutive_seq(num_set, seq_n):
+                skip_seq = True
+                break
+        if skip_seq:
+            continue
+
+        # 5. 形态过滤
         count_list = sorted(Counter(digits).values(), reverse=True)
         form_type = "ABCD"
         if count_list == [4]:
@@ -98,7 +112,7 @@ for k in filter_keys:
     if k not in st.session_state:
         st.session_state[k] = set()
 
-# 计算面板Fragment（固定Key，解决点击无响应、WebSocket报错）
+# 计算面板Fragment
 @st.fragment()
 def render_right_panel():
     col_input, col_btn_area = st.columns([1, 2])
@@ -145,7 +159,7 @@ def render_right_panel():
             preview_html += "<br>... (预览仅展示前300条，点击复制获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 主页面布局完全和截图一致，无任何改动
+# 主页面布局完全不变
 st.title("⚡ 极速缩水工具")
 col_filter_left, col_calc_right = st.columns([1, 1])
 with col_filter_left:
