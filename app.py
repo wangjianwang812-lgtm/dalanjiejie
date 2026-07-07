@@ -1,12 +1,11 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from collections import Counter
-import uuid
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- UI 样式 (完全保留你的原样式，一字未改) ---
+# --- UI 样式完全保留原样 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -36,92 +35,119 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 缓存仅限制数量，删除定时自动clear（核心修复，不再弹出清除缓存弹窗）
+# 缓存计算函数
 @st.cache_data(max_entries=20)
-def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
+def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
-    manual_chars = set(manual_d)
+    input_code = three_code.strip()
+    # 核心修改：输入3位数字，4位数必须完整包含这3个数字
+    target_digits = set(input_code) if len(input_code) == 3 and input_code.isdigit() else None
+
     for i in range(10000):
         num_str = f"{i:04d}"
         digits = [int(d) for d in num_str]
-        num_set = set(digits)
-        if manual_d and not (manual_chars & set(num_str)): continue
-        if sum(digits) in killed_sums: continue
-        if (max(digits) - min(digits)) in killed_spans: continue
-        is_killed = False
+        num_set = set(num_str)
+
+        # 3码筛选逻辑：有输入3位数字时，4位数必须包含全部3个数字
+        if target_digits is not None:
+            if not target_digits.issubset(num_set):
+                continue
+
+        # 剔除勾选的和值
+        if sum(digits) in killed_sums:
+            continue
+        # 剔除勾选的跨度
+        span_val = max(digits) - min(digits)
+        if span_val in killed_spans:
+            continue
+        # 剔除包含勾选长度顺子的号码
+        skip_flag = False
         for n in killed_consecutives:
-            for s in range(10):
-                if {(s + j) % 10 for j in range(n)}.issubset(num_set):
-                    is_killed = True; break
-            if is_killed: break
-        if is_killed: continue
-        counts = sorted(Counter(digits).values(), reverse=True)
-        type_str = "ABCD"
-        if counts == [4]: type_str = "AAAA"
-        elif counts == [3, 1]: type_str = "AAAB"
-        elif counts == [2, 2]: type_str = "AABB"
-        elif counts == [2, 1, 1]: type_str = "AABC"
-        if type_str in killed_types: continue
+            for start in range(10):
+                seq_set = {(start + j) % 10 for j in range(n)}
+                if seq_set.issubset(num_set):
+                    skip_flag = True
+                    break
+            if skip_flag:
+                break
+        if skip_flag:
+            continue
+        # 判断号码形态，剔除勾选形态
+        count_list = sorted(Counter(digits).values(), reverse=True)
+        form_type = "ABCD"
+        if count_list == [4]:
+            form_type = "AAAA"
+        elif count_list == [3, 1]:
+            form_type = "AAAB"
+        elif count_list == [2, 2]:
+            form_type = "AABB"
+        elif count_list == [2, 1, 1]:
+            form_type = "AABC"
+        if form_type in killed_types:
+            continue
+
         results.append(num_str)
     return results
 
-# 初始化会话状态（原有逻辑完全不变）
-if 'res_list' not in st.session_state: st.session_state.res_list = []
-for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
-    if k not in st.session_state: st.session_state[k] = set()
+# 会话状态初始化
+if 'res_list' not in st.session_state:
+    st.session_state.res_list = []
+filter_keys = ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']
+for k in filter_keys:
+    if k not in st.session_state:
+        st.session_state[k] = set()
 
-# Fragment动态唯一key，避免长期运行组件hash冲突
-@st.fragment
+# 计算面板Fragment（固定Key，解决点击无响应）
+@st.fragment()
 def render_right_panel():
-    frag_id = str(uuid.uuid4())
-    c_in, c_btns = st.columns([1, 2])
-    with c_in:
-        manual_d = st.text_input("输入胆码:", key=f"manual_input_{frag_id}")
-    with c_btns:
+    col_input, col_btn_area = st.columns([1, 2])
+    with col_input:
+        three_code = st.text_input("输入3位号码:", key="fixed_three_input", placeholder="例：148")
+    with col_btn_area:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        b1, b2, _ = st.columns([1, 1, 1])
-        with b1:
-            # 计算按钮key唯一，不会失效
-            if st.button("🚀 立即计算", key=f"calc_btn_{frag_id}"):
+        btn_calc, btn_copy, _ = st.columns([1, 1, 1])
+        with btn_calc:
+            click_calc = st.button("🚀 立即缩水", key="fixed_calc_btn")
+            if click_calc:
                 st.session_state.res_list = cached_calc(
-                    manual_d,
+                    three_code,
                     tuple(st.session_state.killed_spans),
                     tuple(st.session_state.killed_types),
                     tuple(st.session_state.killed_consecutives),
                     tuple(st.session_state.killed_sums)
                 )
-        with b2:
+        with btn_copy:
             if st.session_state.res_list:
-                # JS全局存储复制文本，避免超长字符串阻塞WebSocket
-                full_copy_str = " ".join(st.session_state.res_list)
+                full_text = " ".join(st.session_state.res_list)
+                safe_text = full_text.replace("`", "\\`").replace('"', '\\"').replace("'", "\\'")
                 copy_html = f"""
-                <script>window.tempCopyData = `{full_copy_str}`;</script>
+                <script>window.copyTextStore = "{safe_text}";</script>
                 <button class="unified-btn" onclick="
-                    navigator.clipboard.writeText(window.tempCopyData);
+                    navigator.clipboard.writeText(window.copyTextStore);
                     this.innerText='✅ 已复制';
                     setTimeout(()=>this.innerText='📋 复制结果', 2000);
                 ">📋 复制结果</button>
                 """
                 components.html(copy_html, height=60)
 
+    # 结果数量展示
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
-    
-    # 预览逻辑完全保留无修改
+    # 预览最多300条
     if st.session_state.res_list:
-        preview = st.session_state.res_list[:300]
-        html_list = [
-            f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>"
-            for num in preview
-        ]
-        preview_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_list)}</div>"
+        preview_data = st.session_state.res_list[:300]
+        html_items = []
+        for num in preview_data:
+            span_digits = "".join([f'<span class="n{d}">{d}</span>' for d in num])
+            html_items.append(f"<div style='margin-right:15px; margin-bottom:5px;'>{span_digits}</div>")
+        preview_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_items)}</div>"
         if len(st.session_state.res_list) > 300:
-            preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
+            preview_html += "<br>... (预览仅展示前300条，点击复制获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 页面布局、过滤面板全部原样不动
+# 主页面布局完全和你截图一致
 st.title("⚡ 极速缩水工具")
-col_l, col_r = st.columns([1, 1])
-with col_l:
+col_filter_left, col_calc_right = st.columns([1, 1])
+with col_filter_left:
     st.subheader("过滤面板")
     filter_groups = [
         ('killed_spans', '跨度过滤', range(10)),
@@ -129,16 +155,16 @@ with col_l:
         ('killed_consecutives', '顺子过滤', [2, 3, 4]),
         ('killed_sums', '和值过滤', range(37))
     ]
-    for key, label, items in filter_groups:
-        st.markdown(f"**{label}**")
-        cols = st.columns(10)
-        for idx, item in enumerate(items):
-            cb_key = f"cb_{key}_{item}"
-            checked = cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=cb_key)
-            if checked:
-                st.session_state[key].add(item)
-            elif item in st.session_state[key]:
-                st.session_state[key].remove(item)
-with col_r:
+    for state_key, title, item_list in filter_groups:
+        st.markdown(f"**{title}**")
+        cols_row = st.columns(10)
+        for idx, val in enumerate(item_list):
+            ck_key = f"ck_{state_key}_{val}"
+            selected = cols_row[idx % 10].checkbox(str(val), value=val in st.session_state[state_key], key=ck_key)
+            if selected:
+                st.session_state[state_key].add(val)
+            elif val in st.session_state[state_key]:
+                st.session_state[state_key].remove(val)
+with col_calc_right:
     st.subheader("计算面板")
     render_right_panel()
