@@ -31,7 +31,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 核心计算函数 ---
+# --- 缓存计算函数 ---
 @st.cache_data
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
@@ -50,6 +50,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
                     is_killed = True; break
             if is_killed: break
         if is_killed: continue
+        
         counts = sorted(Counter(digits).values(), reverse=True)
         type_str = "ABCD"
         if counts == [4]: type_str = "AAAA"
@@ -60,7 +61,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         results.append(num_str)
     return results
 
-# --- 状态初始化 ---
+# --- 初始化状态 ---
 if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
@@ -72,26 +73,36 @@ def render_right_panel():
     with c_in:
         manual_d = st.text_input("输入胆码:", key="manual_input")
     with c_btns:
-        if st.button("🚀 立即计算"):
-            st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
-                                                    tuple(st.session_state.killed_types), 
-                                                    tuple(st.session_state.killed_consecutives), 
-                                                    tuple(st.session_state.killed_sums))
-    
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+        b1, b2, _ = st.columns([1, 1, 1])
+        with b1:
+            if st.button("🚀 立即计算"):
+                st.session_state.res_list = cached_calc(manual_d, tuple(st.session_state.killed_spans), 
+                                                        tuple(st.session_state.killed_types), 
+                                                        tuple(st.session_state.killed_consecutives), 
+                                                        tuple(st.session_state.killed_sums))
+        with b2:
+            if st.session_state.res_list:
+                # 核心修复：改用 st.code 或 文本展示结果，移除 iframe 组件以消除 WebSocket 报错
+                copy_text = " ".join(st.session_state.res_list)
+                st.code(copy_text, language=None) # 此处用户可直接Ctrl+A复制，最稳健
+
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     if st.session_state.res_list:
-        # 显示前300条结果
-        display_list = st.session_state.res_list[:300]
-        html_content = "".join([f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in display_list])
-        st.markdown(f'<div class="preview-box" style="display:flex; flex-wrap:wrap;">{html_content}</div>', unsafe_allow_html=True)
+        # 优化渲染逻辑：一次性 Join 字符串，极大减少浏览器压力
+        preview = st.session_state.res_list[:300]
+        html_list = []
+        for num in preview:
+            colored = "".join([f"<span class='n{d}'>{d}</span>" for d in num])
+            html_list.append(f"<div style='margin-right:15px; margin-bottom:5px;'>{colored}</div>")
         
-        # 复制功能（原生实现，避免组件报错）
-        st.info(f"显示前 300 条，完整共 {len(st.session_state.res_list)} 条")
-        copy_text = " ".join(st.session_state.res_list)
-        st.code(copy_text, language=None) # 这里将代码展示为文本，方便用户直接全选复制，比之前的按钮更稳定
+        st.markdown(f"<div class='preview-box' style='display:flex; flex-wrap:wrap;'>{''.join(html_list)}</div>", unsafe_allow_html=True)
+        
+        if len(st.session_state.res_list) > 300: 
+            st.write("... (已隐藏部分结果，上面框内可全选复制)")
 
-# --- 主页面布局 ---
+# --- 主布局 ---
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
