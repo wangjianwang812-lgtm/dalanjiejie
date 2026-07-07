@@ -35,12 +35,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 缓存计算函数
+# 缓存计算函数（修改3码筛选逻辑：包含任意一个数字即保留）
 @st.cache_data(max_entries=20)
 def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     input_code = three_code.strip()
-    # 核心修改：输入3位数字，4位数必须完整包含这3个数字
+    # 目标数字集合：输入3位数字拆分成集合
     target_digits = set(input_code) if len(input_code) == 3 and input_code.isdigit() else None
 
     for i in range(10000):
@@ -48,9 +48,10 @@ def cached_calc(three_code, killed_spans, killed_types, killed_consecutives, kil
         digits = [int(d) for d in num_str]
         num_set = set(num_str)
 
-        # 3码筛选逻辑：有输入3位数字时，4位数必须包含全部3个数字
+        # ========== 核心修改：只要号码包含3个数字中任意1个就保留 ==========
         if target_digits is not None:
-            if not target_digits.issubset(num_set):
+            # 完全不含输入的3个数字 → 直接剔除
+            if target_digits.isdisjoint(num_set):
                 continue
 
         # 剔除勾选的和值
@@ -97,7 +98,7 @@ for k in filter_keys:
     if k not in st.session_state:
         st.session_state[k] = set()
 
-# 计算面板Fragment（固定Key，解决点击无响应）
+# 计算面板Fragment（固定Key，解决点击无响应、WebSocket报错）
 @st.fragment()
 def render_right_panel():
     col_input, col_btn_area = st.columns([1, 2])
@@ -144,7 +145,7 @@ def render_right_panel():
             preview_html += "<br>... (预览仅展示前300条，点击复制获取全部)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 主页面布局完全和你截图一致
+# 主页面布局完全和截图一致，无任何改动
 st.title("⚡ 极速缩水工具")
 col_filter_left, col_calc_right = st.columns([1, 1])
 with col_filter_left:
