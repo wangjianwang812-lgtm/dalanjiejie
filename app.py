@@ -168,7 +168,8 @@ with col_l:
             selected = row_cols[idx % 10].checkbox(str(val), value=val in st.session_state[state_key], key=cb_key)
             if selected:
                 st.session_state[state_key].add(val)
-            elif val in st.session_state[key]:
+            # 修复点：把错误的 key 改为 state_key
+            elif val in st.session_state[state_key]:
                 st.session_state[state_key].remove(val)
 with col_r:
     st.subheader("计算面板")
