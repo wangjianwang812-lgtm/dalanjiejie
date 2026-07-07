@@ -2,10 +2,10 @@ import streamlit as st
 import streamlit.components.v1 as components
 from collections import Counter
 
-# --- 页面基础配置（原样不动）
+# --- 页面基础配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
 
-# --- 界面样式完全原版，一字未改
+# --- 界面样式固定不变 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
@@ -35,10 +35,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 通用顺子判断函数：统一处理2/3/4连，支持跨0循环（9,0,1 / 8,9,0,1）
+# 通用顺子判断函数（统一处理2/3/4连，支持跨0循环 901、9012）
 def has_continuous(digit_set, length):
     num_list = sorted([int(x) for x in digit_set])
-    # 扩展数组处理跨0循环
     extended = num_list + [x + 10 for x in num_list]
     for start in extended:
         match = True
@@ -52,18 +51,17 @@ def has_continuous(digit_set, length):
             return True
     return False
 
-# 核心计算函数
-@st.cache_data(max_entries=20)
+# 核心计算函数，缓存30分钟自动过期，限制最大缓存数量防长期卡顿
+@st.cache_data(max_entries=20, ttl=1800)
 def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d.strip()) if manual_d.strip() else None
-    # 遍历全部10000个四位数
     for i in range(10000):
         num_str = f"{i:04d}"
         digits = [int(d) for d in num_str]
         num_set = set(num_str)
 
-        # 第一层筛选：输入3位数字，只要包含任意一个就保留，完全不含直接剔除（基础池7599）
+        # 三码基础池：不含输入任意数字直接剔除，无过滤7599条
         if manual_chars is not None and manual_chars.isdisjoint(num_set):
             continue
         
@@ -75,7 +73,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         if span_val in killed_spans:
             continue
 
-        # 顺子过滤：2、3、4连统一使用新判断函数，全部支持跨0循环
+        # 顺子过滤 2/3/4连全部生效，跨0顺子正常杀号
         is_killed = False
         for n in killed_consecutives:
             if has_continuous(num_set, n):
@@ -84,7 +82,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         if is_killed:
             continue
         
-        # 形态判断
+        # 形态过滤完整逻辑
         counts = sorted(Counter(digits).values(), reverse=True)
         type_str = "ABCD"
         if counts == [4]:
@@ -101,7 +99,7 @@ def cached_calc(manual_d, killed_spans, killed_types, killed_consecutives, kille
         results.append(num_str)
     return results
 
-# 正确初始化会话状态，解决KeyError报错
+# 会话状态正确初始化，彻底杜绝KeyError崩溃
 if 'res_list' not in st.session_state:
     st.session_state.res_list = []
 filter_keys = ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']
@@ -109,12 +107,12 @@ for k in filter_keys:
     if k not in st.session_state:
         st.session_state[k] = set()
 
-# 计算面板
+# 计算面板，固定按钮key不会点击失效
 @st.fragment
 def render_right_panel():
     c_in, c_btns = st.columns([1, 2])
     with c_in:
-        manual_d = st.text_input("输入3位号码:", key="manual_input_fixed")
+        manual_d = st.text_input("输入3位号码:", key="manual_input_fixed", placeholder="例：148")
     with c_btns:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         b1, b2, _ = st.columns([1, 1, 1])
@@ -139,38 +137,39 @@ def render_right_panel():
                 """
                 components.html(copy_html, height=60)
 
-    # 结果数量展示
+    # 结果计数展示
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
-    # 预览前300条
+    # 预览仅前300条，减少前端渲染内存占用
     if st.session_state.res_list:
         preview = st.session_state.res_list[:300]
         html_list = [f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in preview]
         preview_html = f"<div style='display:flex; flex-wrap:wrap;'>{''.join(html_list)}</div>"
         if len(st.session_state.res_list) > 300:
-            preview_html += "<br>... (已隐藏剩余结果，点击复制即可获取全部)"
+            preview_html += "<br>... (仅预览前300条，复制按钮获取全部号码)"
         st.markdown(f'<div class="preview-box">{preview_html}</div>', unsafe_allow_html=True)
 
-# 页面布局、过滤面板完全不变
+# 主页面布局、左侧过滤面板完全和截图一致，无功能缺失
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 with col_l:
     st.subheader("过滤面板")
-    for key, label, items in [
+    filter_group_list = [
         ('killed_spans', '跨度过滤', range(10)),
         ('killed_types', '形态过滤', ["AAAA", "AAAB", "AABB", "AABC", "ABCD"]),
         ('killed_consecutives', '顺子过滤', [2, 3, 4]),
         ('killed_sums', '和值过滤', range(37))
-    ]:
-        st.markdown(f"**{label}**")
-        cols = st.columns(10)
-        for idx, item in enumerate(items):
-            cb_key = f"cb_{key}_{item}"
-            selected = cols[idx % 10].checkbox(str(item), value=item in st.session_state[key], key=cb_key)
+    ]
+    for state_key, title, item_list in filter_group_list:
+        st.markdown(f"**{title}**")
+        row_cols = st.columns(10)
+        for idx, val in enumerate(item_list):
+            cb_key = f"cb_{state_key}_{val}"
+            selected = row_cols[idx % 10].checkbox(str(val), value=val in st.session_state[state_key], key=cb_key)
             if selected:
-                st.session_state[key].add(item)
-            elif item in st.session_state[key]:
-                st.session_state[key].remove(item)
+                st.session_state[state_key].add(val)
+            elif val in st.session_state[key]:
+                st.session_state[state_key].remove(val)
 with col_r:
     st.subheader("计算面板")
     render_right_panel()
