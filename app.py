@@ -8,10 +8,14 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 # --- UI 样式 ---
 st.markdown("""
     <style>
+    /* 缩短输入框 */
+    [data-testid="stTextInput"] { max-width: 300px !important; }
+    
     .block-container { padding-top: 1rem !important; }
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .stApp { background-color: #87CEEB !important; }
+    
     .preview-box { 
         background-color: #000 !important; padding: 15px !important; border-radius: 5px !important; 
         height: 450px !important; overflow-y: auto !important; border: 2px solid #000 !important;
@@ -19,7 +23,15 @@ st.markdown("""
         color: #fff !important; white-space: pre-wrap !important;
     }
     .highlight-count { color: #FF0000 !important; font-size: 40px !important; font-weight: 900 !important; }
-    div.stButton > button { background-color: #FFD700 !important; color: #000 !important; height: 50px !important; width: 100% !important; font-weight: 900 !important; border-radius: 10px !important; border: none !important; }
+    
+    /* 按钮基础动效 */
+    div.stButton > button { 
+        background-color: #FFD700 !important; color: #000 !important; height: 50px !important; 
+        width: 100% !important; font-weight: 900 !important; border-radius: 10px !important; 
+        border: none !important; transition: all 0.2s ease !important; cursor: pointer !important;
+    }
+    div.stButton > button:hover { filter: brightness(1.15) !important; transform: scale(1.02) !important; }
+    div.stButton > button:active { transform: scale(0.95) !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,20 +92,24 @@ with col_r:
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     if st.session_state.res_list:
-        # 使用 components.html 生成一个独立的网页域，彻底避开 Streamlit 的字符串长度限制
         data_to_copy = " ".join(st.session_state.res_list)
-        html_code = f"""
-        <div style="font-family:sans-serif; text-align:center;">
-            <button id="copy-btn" style="background:#f0f0f0; border:1px solid #ccc; padding:12px; border-radius:10px; width:100%; font-weight:900; cursor:pointer;"
-            onclick="
-                const text = `{data_to_copy}`;
-                navigator.clipboard.writeText(text).then(() => {{
-                    const btn = document.getElementById('copy-btn');
-                    btn.innerText = '✅ 已复制全部';
-                    setTimeout(() => {{ btn.innerText = '📋 复制结果'; }}, 2000);
-                }});
-            ">📋 复制结果</button>
-        </div>
-        """
-        components.html(html_code, height=60)
+        # 集成复制组件，并为其添加与 St 按钮一致的 Hover/Active 动效
+        components.html(f"""
+        <button id="copy-btn" style="
+            background:#f0f0f0; border:1px solid #ccc; padding:12px; border-radius:10px; width:100%; 
+            font-weight:900; cursor:pointer; transition: all 0.2s;
+        " onmouseover="this.style.filter='brightness(1.15)'; this.style.transform='scale(1.02)';" 
+           onmouseout="this.style.filter='brightness(1.0)'; this.style.transform='scale(1.0)';"
+           onmousedown="this.style.transform='scale(0.95)';"
+           onmouseup="this.style.transform='scale(1.02)';"
+           onclick="
+            const text = `{data_to_copy}`;
+            navigator.clipboard.writeText(text).then(() => {{
+                const btn = document.getElementById('copy-btn');
+                btn.innerText = '✅ 已复制全部';
+                setTimeout(() => {{ btn.innerText = '📋 复制结果'; }}, 2000);
+            }});
+        ">📋 复制结果</button>
+        """, height=60)
+        
         st.markdown(f'<div class="preview-box">{" ".join(st.session_state.res_list[:500])} ... (已省略部分预览)</div>', unsafe_allow_html=True)
