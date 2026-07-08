@@ -1,6 +1,7 @@
 import streamlit as st
 from collections import Counter
 import streamlit.components.v1 as components
+import json # 引入 json 处理文本，彻底避免字符解析错误
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
@@ -8,9 +9,7 @@ st.set_page_config(page_title="极速缩水工具", layout="wide")
 # --- UI 样式 ---
 st.markdown("""
     <style>
-    /* 缩短输入框宽度 */
     [data-testid="stTextInput"] { max-width: 300px !important; }
-    
     .block-container { padding-top: 1rem !important; }
     #MainMenu, header, footer {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
@@ -86,7 +85,7 @@ with col_r:
     st.subheader("计算面板")
     manual_d = st.text_input("输入胆码:", key="manual_input")
     
-    # 将按钮并排
+    # 按钮布局：比例 1:1，让两个按钮并排
     c1, c2 = st.columns([1, 1])
     with c1:
         if st.button("🚀 立即计算"):
@@ -94,21 +93,17 @@ with col_r:
     
     with c2:
         if st.session_state.res_list:
-            data_to_copy = " ".join(st.session_state.res_list)
-            # 复制组件，动效与 CSS 完全对齐
+            # 安全传递数据：使用 json.dumps 转换，完美规避反引号导致的 JS 报错
+            data_json = json.dumps(" ".join(st.session_state.res_list))
             components.html(f"""
             <button id="copy-btn" style="
-                background:#FFD700; border:none; padding:0; border-radius:10px; width:100%; height: 50px;
-                font-weight:900; cursor:pointer; transition: all 0.2s; font-size: 16px;
-            " onmouseover="this.style.filter='brightness(1.15)'; this.style.transform='scale(1.02)';" 
-               onmouseout="this.style.filter='brightness(1.0)'; this.style.transform='scale(1.0)';"
-               onmousedown="this.style.transform='scale(0.95)';"
-               onmouseup="this.style.transform='scale(1.02)';"
-               onclick="
-                const text = `{data_to_copy}`;
-                navigator.clipboard.writeText(text).then(() => {{
+                background:#FFD700; border:none; border-radius:10px; width:100%; height:50px;
+                font-weight:900; cursor:pointer; font-size:16px; color:#000;
+            " onmouseover="this.style.filter='brightness(1.15)';" onmouseout="this.style.filter='brightness(1.0)';"
+              onclick="
+                navigator.clipboard.writeText({data_json}).then(() => {{
                     const btn = document.getElementById('copy-btn');
-                    btn.innerText = '✅ 已复制全部';
+                    btn.innerText = '✅ 已复制';
                     setTimeout(() => {{ btn.innerText = '📋 复制结果'; }}, 2000);
                 }});
             ">📋 复制结果</button>
