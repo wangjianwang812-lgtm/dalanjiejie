@@ -26,7 +26,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 初始化状态 ---
+# --- 初始化 ---
 if 'res_list' not in st.session_state: st.session_state.res_list = []
 if 'refresh_val' not in st.session_state: st.session_state.refresh_val = 0
 
@@ -91,7 +91,6 @@ with col_r:
                                                 tuple(st.session_state.killed_types), 
                                                 tuple(st.session_state.killed_consecutives), 
                                                 tuple(st.session_state.killed_sums))
-        # 更新刷新标记，强制触发下方的 key 变更
         st.session_state.refresh_val = random.random()
 
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
@@ -102,12 +101,10 @@ with col_r:
         <div class="unified-btn" onclick="navigator.clipboard.writeText('{copy_text}'); alert('已复制全部结果');">📋 复制结果</div>
         """, unsafe_allow_html=True)
         
-        # 核心：使用唯一动态 key (st.session_state.refresh_val) 强制触发浏览器重绘
+        # --- 修复核心：使用 container 代替在 markdown 中传 key ---
         preview = st.session_state.res_list[:300]
         html_content = "".join([f"<div style='margin-right:15px; margin-bottom:5px;'>{''.join([f'<span class=\"n{d}\">{d}</span>' for d in num])}</div>" for num in preview])
         
-        st.markdown(
-            f'<div class="preview-box" style="display:flex; flex-wrap:wrap;">{html_content}</div>', 
-            unsafe_allow_html=True,
-            key=f"refresh_{st.session_state.refresh_val}"
-        )
+        # container 拥有 key 参数，这才是强制刷新的正确姿势
+        with st.container(key=f"refresh_{st.session_state.refresh_val}"):
+            st.markdown(f'<div class="preview-box" style="display:flex; flex-wrap:wrap;">{html_content}</div>', unsafe_allow_html=True)
