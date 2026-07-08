@@ -1,5 +1,6 @@
 import streamlit as st
 from collections import Counter
+import streamlit.components.v1 as components
 
 # --- 页面配置 ---
 st.set_page_config(page_title="极速缩水工具", layout="wide")
@@ -14,29 +15,19 @@ st.markdown("""
     .preview-box { 
         background-color: #000 !important; padding: 15px !important; border-radius: 5px !important; 
         height: 450px !important; overflow-y: auto !important; border: 2px solid #000 !important;
-        margin-top: 10px !important; font-family: monospace; font-weight: bold; font-size: 17px;
+        margin-top: 10px !important; font-family: monospace; font-size: 17px;
         color: #fff !important; white-space: pre-wrap !important;
     }
-    .highlight-count { 
-        color: #FF0000 !important; font-size: 40px !important; font-weight: 900 !important;
-        text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.4) !important; margin-left: 10px !important;
-    }
-    .unified-btn { 
-        background-color: #f0f0f0 !important; color: #333 !important; border: 1px solid #ccc !important; 
-        width: 100% !important; height: 50px !important; border-radius: 10px !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        font-weight: 900 !important; cursor: pointer !important; transition: all 0.2s;
-    }
-    .unified-btn:hover { background-color: #e0e0e0 !important; }
+    .highlight-count { color: #FF0000 !important; font-size: 40px !important; font-weight: 900 !important; }
+    div.stButton > button { background-color: #FFD700 !important; color: #000 !important; height: 50px !important; width: 100% !important; font-weight: 900 !important; border-radius: 10px !important; border: none !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 状态初始化 ---
+# --- 状态与逻辑 ---
 if 'res_list' not in st.session_state: st.session_state.res_list = []
 for k in ['killed_spans', 'killed_types', 'killed_consecutives', 'killed_sums']:
     if k not in st.session_state: st.session_state[k] = set()
 
-# --- 计算逻辑 ---
 def calc_logic(manual_d, killed_spans, killed_types, killed_consecutives, killed_sums):
     results = []
     manual_chars = set(manual_d)
@@ -64,7 +55,7 @@ def calc_logic(manual_d, killed_spans, killed_types, killed_consecutives, killed
         results.append(num_str)
     return results
 
-# --- 布局 ---
+# --- 界面布局 ---
 st.title("⚡ 极速缩水工具")
 col_l, col_r = st.columns([1, 1])
 
@@ -81,33 +72,28 @@ with col_l:
 
 with col_r:
     st.subheader("计算面板")
-    c_in, c_btns = st.columns([1, 2])
-    manual_d = c_in.text_input("输入胆码:", key="manual_input")
-    
-    with c_btns:
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        b1, b2, _ = st.columns([1, 1, 1])
-        with b1:
-            if st.button("🚀 立即计算"):
-                st.session_state.res_list = calc_logic(manual_d, st.session_state.killed_spans, st.session_state.killed_types, st.session_state.killed_consecutives, st.session_state.killed_sums)
-        with b2:
-            if st.session_state.res_list:
-                copy_text = " ".join(st.session_state.res_list)
-                # 使用一个隐藏的 textarea 进行复制，这是兼容性最强的方案
-                st.markdown(f"""
-                <textarea id="hidden-area" style="position: absolute; left: -9999px;">{copy_text}</textarea>
-                <div class="unified-btn" id="copy-btn" onclick="
-                    var ta = document.getElementById('hidden-area');
-                    ta.select();
-                    document.execCommand('copy');
-                    var btn = document.getElementById('copy-btn');
-                    btn.innerText = '✅ 已复制';
-                    setTimeout(function(){{ btn.innerText = '📋 复制结果'; }}, 2000);
-                ">📋 复制结果</div>
-                """, unsafe_allow_html=True)
+    manual_d = st.text_input("输入胆码:", key="manual_input")
+    b1, _ = st.columns([1, 2])
+    if b1.button("🚀 立即计算"):
+        st.session_state.res_list = calc_logic(manual_d, st.session_state.killed_spans, st.session_state.killed_types, st.session_state.killed_consecutives, st.session_state.killed_sums)
 
     st.markdown(f"### 计算结果: <span class='highlight-count'>{len(st.session_state.res_list)}</span>", unsafe_allow_html=True)
     
     if st.session_state.res_list:
-        display_str = " ".join(st.session_state.res_list)
-        st.markdown(f'<div class="preview-box">{display_str}</div>', unsafe_allow_html=True)
+        # 使用 components.html 生成一个独立的网页域，彻底避开 Streamlit 的字符串长度限制
+        data_to_copy = " ".join(st.session_state.res_list)
+        html_code = f"""
+        <div style="font-family:sans-serif; text-align:center;">
+            <button id="copy-btn" style="background:#f0f0f0; border:1px solid #ccc; padding:12px; border-radius:10px; width:100%; font-weight:900; cursor:pointer;"
+            onclick="
+                const text = `{data_to_copy}`;
+                navigator.clipboard.writeText(text).then(() => {{
+                    const btn = document.getElementById('copy-btn');
+                    btn.innerText = '✅ 已复制全部';
+                    setTimeout(() => {{ btn.innerText = '📋 复制结果'; }}, 2000);
+                }});
+            ">📋 复制结果</button>
+        </div>
+        """
+        components.html(html_code, height=60)
+        st.markdown(f'<div class="preview-box">{" ".join(st.session_state.res_list[:500])} ... (已省略部分预览)</div>', unsafe_allow_html=True)
